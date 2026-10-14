@@ -1,2 +1,14 @@
-{% extends "base.html" %}{% load money %}{% block title %}Budgets{% endblock %}{% block heading %}Budgets{% endblock %}{% block content %}<div class="page-intro"><p>Small plans make a big difference.</p><a class="btn" href="{% url 'budget_add' %}">＋ Create budget</a></div><div class="card-grid">{% for budget in budgets %}<article class="panel"><div class="panel-head"><div><h2>{{ budget.category.icon }} &nbsp;{{ budget.category.name }}</h2><p>{{ budget.starts_on|date:"M j" }} – {{ budget.ends_on|date:"M j, Y" }}</p></div><span class="budget-badge {% if budget.percent >= 85 %}warning{% endif %}">{{ budget.percent }}%</span></div><div class="budget-amount">{{ budget.spent|money:user.profile.currency }} <small>of {{ budget.amount|money:user.profile.currency }}</small></div><div class="progress"><i class="{% if budget.percent >= 85 %}warning{% endif %}" style="width:{{ budget.percent }}%"></i></div><div class="budget-caption">{{ budget.remaining|money:user.profile.currency }} remaining</div></article>{% empty %}<div class="panel empty">No budgets yet. Add a category budget to keep your month on track.</div>{% endfor %}</div>{% endblock %}
+{% extends "base.html" %}{% load money %}{% block title %}Budgets{% endblock %}{% block heading %}Budgets{% endblock %}{% block content %}
+<div class="page-intro"><p>Set a limit for each category, then adjust it as your plans change.</p><a class="btn" href="{% url 'budget_add' %}">＋ Create budget</a></div>
+<div class="card-grid">
+{% for budget in budgets %}
+<article class="panel budget-card">
+  <div class="panel-head"><div><h2>{{ budget.category.icon }} &nbsp;{{ budget.category.name }}</h2><p>{{ budget.starts_on|date:"M j, Y" }} – {{ budget.ends_on|date:"M j, Y" }}</p></div><span class="budget-badge {% if budget.percent >= 85 %}warning{% endif %}">{{ budget.percent }}%</span></div>
+  <div class="budget-amount">{{ budget.spent|money:user.profile.currency }} <small>of {{ budget.amount|money:user.profile.currency }}</small></div>
+  <div class="progress"><i class="{% if budget.percent >= 85 %}warning{% endif %}" style="width:{{ budget.percent }}%"></i></div>
+  <div class="budget-caption"><span>{{ budget.remaining|money:user.profile.currency }} remaining</span>{% if budget.rollover %}<span>Rollover on</span>{% endif %}</div>
+  <div class="row-actions budget-actions"><a class="btn light" href="{% url 'budget_edit' budget.pk %}">Edit budget</a></div>
+</article>
+{% empty %}<div class="panel empty">No budgets yet. Add a category budget to keep your month on track.</div>{% endfor %}
+</div>{% endblock %}
 

@@ -144,8 +144,16 @@ class RecurringItemForm(forms.ModelForm):
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs); self.user = user
         self.fields["account"].queryset = Account.objects.filter(user=user, is_archived=False)
-        self.fields["category"].queryset = Category.objects.filter(user=user)
+        kind = self.data.get("kind") or getattr(self.instance, "kind", "")
+        category_kind = "expense" if kind == "bill" else "income" if kind == "income" else None
+        categories = Category.objects.filter(user=user)
+        self.fields["category"].queryset = categories.filter(kind=category_kind) if category_kind else categories
         self.fields["category"].required = False; self.fields["end_date"].required = False
+    def clean(self):
+        data = super().clean()
+        if data.get("end_date") and data.get("next_date") and data["end_date"] < data["next_date"]:
+            self.add_error("end_date", "End date must be on or after the next scheduled date.")
+        return data
 
 class DebtForm(forms.ModelForm):
     class Meta:

@@ -1,3 +1,67 @@
-{% extends "base.html" %}{% load money %}{% block title %}Calendar & bills{% endblock %}{% block heading %}Calendar & bills{% endblock %}{% block content %}<div class="page-intro"><p>Upcoming money and recent activity · {{ month }}</p><a class="btn" href="{% url 'recurring_add' %}">＋ Add planned item</a><span class="chip">Scheduled items are forecasts, not posted transactions</span></div><section class="panel"><div class="panel-head"><div><h2>Upcoming recurring items</h2><p>Bills and income dates</p></div></div>{% for item in items %}<div class="transaction-row"><span class="tx-emoji">{% if item.kind == 'bill' %}🧾{% else %}↙{% endif %}</span><span class="tx-main"><b>{{ item.name }}</b><small>{{ item.frequency|title }} · {{ item.account.name }}</small></span><span class="tx-amount">{{ item.amount|money:item.account.currency }}<small>{{ item.next_date|date:"M j, Y" }}</small></span></div>{% empty %}<div class="empty">No scheduled bills or income yet. This area will show recurring items as you add them.</div>{% endfor %}</section><section class="panel spaced"><div class="panel-head"><div><h2>This month’s activity</h2><p>Posted transactions</p></div></div>{% for item in transactions %}<div class="transaction-row"><span class="tx-emoji">{% if item.category %}{{ item.category.icon }}{% else %}•{% endif %}</span><span class="tx-main"><b>{{ item.description }}</b><small>{{ item.category.name|default:"Uncategorized" }} · {{ item.date|date:"M j" }}</small></span><span class="tx-amount">{{ item.amount|money:item.currency }}</span></div>{% empty %}<div class="empty">No activity this month yet.</div>{% endfor %}</section>{% endblock %}
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Calendar & bills{% endblock %}
+{% block heading %}Calendar & bills{% endblock %}
+{% block content %}
+<div class="page-intro calendar-intro">
+  <div><p>See what’s due, record bills you’ve paid, and review money in and out.</p></div>
+  <a class="btn" href="{% url 'recurring_add' %}">＋ Add bill or income</a>
+</div>
 
+<section class="panel calendar-panel">
+  <div class="calendar-toolbar">
+    <div><div class="eyebrow">MONTH VIEW</div><h2>{{ month }}</h2></div>
+    <nav class="calendar-nav" aria-label="Calendar month navigation">
+      <a class="btn light" href="?month={{ previous_month }}" aria-label="Previous month">←</a>
+      <a class="btn light" href="?month={{ today|date:'Y-m' }}">Today</a>
+      <a class="btn light" href="?month={{ next_month }}" aria-label="Next month">→</a>
+    </nav>
+  </div>
+  <div class="calendar-grid">
+    <div class="calendar-weekday">Sun</div><div class="calendar-weekday">Mon</div><div class="calendar-weekday">Tue</div><div class="calendar-weekday">Wed</div><div class="calendar-weekday">Thu</div><div class="calendar-weekday">Fri</div><div class="calendar-weekday">Sat</div>
+    {% for week in weeks %}{% for day in week %}
+    <div class="calendar-day {% if not day.in_month %}outside-month{% endif %} {% if day.date == today %}is-today{% endif %}">
+      <span class="calendar-date">{{ day.date.day }}</span>
+      <div class="calendar-events">
+        {% for event in day.events %}
+          <div class="calendar-event {% if event.kind == 'bill' or event.kind == 'expense' %}event-expense{% elif event.kind == 'income' %}event-income{% else %}event-neutral{% endif %}" title="{{ event.label }} · {{ event.amount|money:event.currency }}">
+            <span>{% if event.type == 'scheduled' %}Due · {% endif %}{{ event.label }}</span><small>{{ event.amount|money:event.currency }}</small>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}{% endfor %}
+  </div>
+  <div class="calendar-legend"><span><i class="legend-dot expense-dot"></i> Bills / spending</span><span><i class="legend-dot income-dot"></i> Income</span><span>Scheduled items are forecasts until recorded.</span></div>
+</section>
 
+<section class="panel spaced bills-panel">
+  <div class="panel-head"><div><h2>Bills and planned income</h2><p>Overdue items stay visible until you record or pause them.</p></div></div>
+  {% for row in items %}{% with item=row.item %}
+  <article class="bill-row {% if not item.is_active %}bill-paused{% endif %}">
+    <div class="bill-icon {% if item.kind == 'income' %}income-icon{% endif %}">{% if item.kind == 'bill' %}🧾{% else %}↙{% endif %}</div>
+    <div class="bill-main"><div class="bill-title-line"><strong>{{ item.name }}</strong><span class="bill-status {{ row.status_class }}">{{ row.status }}</span></div><small>{{ item.frequency|title }} · {{ item.account.name }}{% if item.category %} · {{ item.category.name }}{% endif %}</small><small>Next date: {{ item.next_date|date:"M j, Y" }}{% if item.end_date %} · Ends {{ item.end_date|date:"M j, Y" }}{% endif %}</small></div>
+    <div class="bill-amount">{{ item.amount|money:item.account.currency }}</div>
+    <div class="bill-actions">
+      <a class="btn light" href="{% url 'recurring_edit' item.pk %}">Edit</a>
+      <form method="post" action="{% url 'recurring_toggle' item.pk %}">{% csrf_token %}<button class="btn light" type="submit">{% if item.is_active %}Pause{% else %}Resume{% endif %}</button></form>
+      {% if item.is_active %}
+      <details class="record-details"><summary class="btn">{% if item.kind == 'bill' %}Mark paid{% else %}Mark received{% endif %}</summary>
+        <form method="post" action="{% url 'recurring_record' item.pk %}" class="record-form">{% csrf_token %}
+          <input type="hidden" name="scheduled_date" value="{{ item.next_date|date:'Y-m-d' }}">
+          <label>Amount<input type="number" name="amount" min="0.01" step="0.01" max="999999999999.99" value="{{ item.amount }}" required></label>
+          <label>{% if item.kind == 'bill' %}Paid on{% else %}Received on{% endif %}<input type="date" name="date" value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" required></label>
+          <button class="btn" type="submit">Save to transactions</button>
+        </form>
+      </details>
+      {% endif %}
+    </div>
+  </article>
+  {% endwith %}{% empty %}<div class="empty">No bills or planned income yet. Add a recurring item and it will appear here and on the calendar.</div>{% endfor %}
+</section>
+
+<section class="panel spaced">
+  <div class="panel-head"><div><h2>Transactions in {{ month }}</h2><p>Posted entries for the selected month</p></div><a class="text-link" href="{% url 'transactions' %}">View all →</a></div>
+  {% for item in transactions %}<div class="transaction-row"><span class="tx-emoji">{% if item.category %}{{ item.category.icon }}{% else %}•{% endif %}</span><span class="tx-main"><b>{{ item.description }}</b><small>{{ item.category.name|default:"Uncategorized" }} · {{ item.date|date:"M j" }}</small></span><span class="tx-amount {% if item.kind == 'income' or item.kind == 'refund' %}positive{% elif item.kind == 'expense' %}negative{% endif %}">{{ item.amount|money:item.currency }}</span></div>{% empty %}<div class="empty">No transactions recorded for this month.</div>{% endfor %}
+</section>
+{% endblock %}

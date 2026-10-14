@@ -1,5 +1,6 @@
 import csv
 import json
+import calendar as month_calendar
 from datetime import date, timedelta
 from decimal import Decimal
 from django.conf import settings
@@ -168,6 +169,19 @@ def budget_add(request):
     return render(request, "finance/form.html", {"form": form, "title": "Create budget", "cancel_url": "budgets"})
 
 @login_required
+def budget_edit(request, pk):
+    item = get_object_or_404(Budget.objects.select_related("category"), pk=pk, user=request.user)
+    before = {"category": item.category.name, "amount": str(item.amount), "starts_on": item.starts_on.isoformat(), "ends_on": item.ends_on.isoformat(), "rollover": item.rollover}
+    form = BudgetForm(request.POST or None, instance=item, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        updated = form.save()
+        after = {"category": updated.category.name, "amount": str(updated.amount), "starts_on": updated.starts_on.isoformat(), "ends_on": updated.ends_on.isoformat(), "rollover": updated.rollover}
+        audit(request.user, "update", "budget", updated.pk, f"Updated budget for {updated.category.name}", before=before, after=after)
+        messages.success(request, "Budget updated.")
+        return redirect("budgets")
+    return render(request, "finance/form.html", {"form": form, "title": "Edit budget", "cancel_url": "budgets"})
+
+@login_required
 def goals(request):
     return render(request, "finance/goals.html", {"goals": SavingsGoal.objects.filter(user=request.user).prefetch_related("contributions")})
 
@@ -194,12 +208,119 @@ def goal_contribute(request, pk):
         messages.error(request, "Enter a valid contribution amount and date.")
     return redirect("goals")
 
+def _add_months(anchor, count):
+    month_index = anchor.year * 12 + anchor.month - 1 + count
+    year, month_zero = divmod(month_index, 12)
+    month = month_zero + 1
+    return date(year, month, min(anchor.day, month_calendar.monthrange(year, month)[1]))
+
+def _add_years(anchor, count):
+    year = anchor.year + count
+    return date(year, anchor.month, min(anchor.day, month_calendar.monthrange(year, anchor.month)[1]))
+
+def _recurring_occurrences(item, start, end):
+    anchor = item.next_date
+    end = min(end, item.end_date) if item.end_date else end
+    if anchor > end:
+        return []
+    dates = []
+    if item.frequency == "weekly":
+        jumps = max(0, (start - anchor).days // 7)
+        current = anchor + timedelta(weeks=jumps)
+        if current < start:
+            current += timedelta(weeks=1)
+        while current <= end:
+            dates.append(current)
+            current += timedelta(weeks=1)
+    elif item.frequency == "monthly":
+        jumps = max(0, (start.year - anchor.year) * 12 + start.month - anchor.month)
+        current = _add_months(anchor, jumps)
+        if current < start:
+            jumps += 1
+            current = _add_months(anchor, jumps)
+        while current <= end:
+            dates.append(current)
+            jumps += 1
+            current = _add_months(anchor, jumps)
+    else:
+        jumps = max(0, start.year - anchor.year)
+        current = _add_years(anchor, jumps)
+        if current < start:
+            current = _add_years(anchor, jumps + 1)
+        if current <= end:
+            dates.append(current)
+    return dates
+
+def _next_recurring_date(current, frequency):
+    if frequency == "weekly":
+        return current + timedelta(weeks=1)
+    if frequency == "monthly":
+        return _add_months(current, 1)
+    return _add_years(current, 1)
+
 @login_required
 def calendar(request):
     today = timezone.localdate()
-    items = RecurringItem.objects.filter(user=request.user, is_active=True).select_related("account", "category").order_by("next_date")
-    transactions_for_month = Transaction.objects.filter(user=request.user, date__year=today.year, date__month=today.month).select_related("category")
-    return render(request, "finance/calendar.html", {"items": items, "transactions": transactions_for_month, "month": today.strftime("%B %Y")})
+    try:
+        year_text, month_text = request.GET.get("month", "").split("-", 1)
+        year, month_number = int(year_text), int(month_text)
+        if not today.year - 20 <= year <= today.year + 20 or not 1 <= month_number <= 12:
+            raise ValueError
+    except (ValueError, TypeError):
+        year, month_number = today.year, today.month
+    month_start = date(year, month_number, 1)
+    month_end = date(year, month_number, month_calendar.monthrange(year, month_number)[1])
+    month = month_start.strftime("%B %Y")
+    items = list(RecurringItem.objects.filter(user=request.user).select_related("account", "category").order_by("-is_active", "next_date", "name"))
+    transactions = list(Transaction.objects.filter(user=request.user, date__range=(month_start, month_end)).select_related("category", "account"))
+
+    events_by_date = {}
+    for transaction in transactions:
+        events_by_date.setdefault(transaction.date, []).append({
+            "type": "transaction", "kind": transaction.kind, "label": transaction.description,
+            "amount": transaction.amount, "currency": transaction.currency,
+        })
+    for item in items:
+        if not item.is_active:
+            continue
+        for occurrence in _recurring_occurrences(item, month_start, month_end):
+            events_by_date.setdefault(occurrence, []).append({
+                "type": "scheduled", "kind": "bill" if item.kind == "bill" else "income",
+                "label": item.name, "amount": item.amount, "currency": item.account.currency,
+            })
+
+    weeks = []
+    for week in month_calendar.Calendar(firstweekday=6).monthdatescalendar(year, month_number):
+        weeks.append([{
+            "date": day, "in_month": day.month == month_number,
+            "events": events_by_date.get(day, []) if day.month == month_number else [],
+        } for day in week])
+
+    item_rows = []
+    for item in items:
+        if not item.is_active:
+            status = "Paused"
+            status_class = "paused"
+        elif item.next_date < today:
+            status = "Overdue"
+            status_class = "overdue"
+        elif item.next_date == today:
+            status = "Due today"
+            status_class = "due-today"
+        elif (item.next_date - today).days <= 7:
+            status = "Due soon"
+            status_class = "due-soon"
+        else:
+            status = "Upcoming"
+            status_class = "upcoming"
+        item_rows.append({"item": item, "status": status, "status_class": status_class})
+
+    return render(request, "finance/calendar.html", {
+        "items": item_rows, "transactions": transactions, "month": month, "weeks": weeks,
+        "month_key": month_start.strftime("%Y-%m"), "previous_month": _add_months(month_start, -1).strftime("%Y-%m"),
+        "next_month": _add_months(month_start, 1).strftime("%Y-%m"),
+        "today": today, "currency": request.user.profile.currency,
+    })
 
 @login_required
 def recurring_add(request):
@@ -210,6 +331,68 @@ def recurring_add(request):
         messages.success(request, "Scheduled item created. It remains a forecast until you record it as paid or received.")
         return redirect("calendar")
     return render(request, "finance/form.html", {"form": form, "title": "Add planned payment or income", "cancel_url": "calendar"})
+
+@login_required
+def recurring_edit(request, pk):
+    item = get_object_or_404(RecurringItem, pk=pk, user=request.user)
+    before = {"name": item.name, "kind": item.kind, "amount": str(item.amount), "account": item.account.name, "category": item.category.name if item.category else "", "next_date": item.next_date.isoformat(), "frequency": item.frequency, "end_date": item.end_date.isoformat() if item.end_date else ""}
+    form = RecurringItemForm(request.POST or None, instance=item, user=request.user)
+    if request.method == "POST" and form.is_valid():
+        updated = form.save()
+        after = {"name": updated.name, "kind": updated.kind, "amount": str(updated.amount), "account": updated.account.name, "category": updated.category.name if updated.category else "", "next_date": updated.next_date.isoformat(), "frequency": updated.frequency, "end_date": updated.end_date.isoformat() if updated.end_date else ""}
+        audit(request.user, "update", "recurring item", updated.pk, f"Updated scheduled item: {updated.name}", before=before, after=after)
+        messages.success(request, "Scheduled item updated.")
+        return redirect("calendar")
+    return render(request, "finance/form.html", {"form": form, "title": "Edit planned item", "cancel_url": "calendar"})
+
+@login_required
+@require_POST
+def recurring_toggle(request, pk):
+    item = get_object_or_404(RecurringItem, pk=pk, user=request.user)
+    was_active = item.is_active
+    item.is_active = not item.is_active
+    item.save(update_fields=["is_active"])
+    audit(request.user, "update", "recurring item", item.pk, f"{'Resumed' if item.is_active else 'Paused'} scheduled item: {item.name}", before={"is_active": was_active}, after={"is_active": item.is_active})
+    messages.success(request, f"{item.name} {'resumed' if item.is_active else 'paused'}.")
+    return redirect("calendar")
+
+@login_required
+@require_POST
+def recurring_record(request, pk):
+    today = timezone.localdate()
+    try:
+        amount = Decimal(request.POST.get("amount", ""))
+        paid_date = date.fromisoformat(request.POST.get("date", ""))
+        scheduled_date = date.fromisoformat(request.POST.get("scheduled_date", ""))
+        if not amount.is_finite() or amount <= 0 or amount > Decimal("999999999999.99") or paid_date > today:
+            raise ValueError
+    except (ValueError, TypeError, ArithmeticError):
+        messages.error(request, "Enter a valid positive amount and a payment date that is not in the future.")
+        return redirect("calendar")
+
+    with db_transaction.atomic():
+        item = get_object_or_404(RecurringItem.objects.select_for_update().select_related("account", "category"), pk=pk, user=request.user)
+        if not item.is_active or scheduled_date != item.next_date:
+            messages.error(request, "This scheduled item has changed. Refresh the calendar and try again.")
+            return redirect("calendar")
+        kind = "expense" if item.kind == "bill" else "income"
+        category = item.category
+        if not category or category.kind != kind:
+            category_name = "Bills" if kind == "expense" else "Other income"
+            category, _ = Category.objects.get_or_create(user=request.user, name=category_name, kind=kind, defaults={"icon": "🧾" if kind == "expense" else "↙"})
+        entry = Transaction(user=request.user, account=item.account, category=category, kind=kind, amount=amount, currency=item.account.currency, description=item.name, date=paid_date)
+        entry.full_clean()
+        entry.save()
+        audit(request.user, "create", "transaction", entry.pk, f"Recorded {item.kind}: {entry.description} · {entry.currency} {entry.amount}", after=tx_snapshot(entry))
+        before_next = item.next_date
+        next_date = _next_recurring_date(item.next_date, item.frequency)
+        item.next_date = next_date
+        if item.end_date and next_date > item.end_date:
+            item.is_active = False
+        item.save(update_fields=["next_date", "is_active"])
+        audit(request.user, "update", "recurring item", item.pk, f"Recorded {item.kind}: {item.name}", before={"next_date": before_next.isoformat()}, after={"next_date": item.next_date.isoformat(), "is_active": item.is_active})
+    messages.success(request, f"{item.name} recorded in your transactions. The next date is {item.next_date.strftime('%b')} {item.next_date.day}, {item.next_date.year}.")
+    return redirect("calendar")
 
 @login_required
 def debts(request):
