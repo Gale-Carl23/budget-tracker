@@ -83,11 +83,31 @@ def dashboard(request):
             if due_date >= today:
                 upcoming_bills.append({"item": scheduled, "due_date": due_date, "overdue": False})
     upcoming_bills.sort(key=lambda bill: (bill["due_date"], bill["item"].name.lower()))
+    bill_reminders = []
+    for bill in upcoming_bills:
+        days_left = (bill["due_date"] - today).days
+        if days_left > 7:
+            continue
+        if days_left < 0:
+            reminder_text, level = "Overdue", "critical"
+        elif days_left == 0:
+            reminder_text, level = "Due today", "critical"
+        elif days_left == 1:
+            reminder_text, level = "1-day reminder · due tomorrow", "critical"
+        elif days_left == 3:
+            reminder_text, level = "3-day reminder", "warning"
+        elif days_left == 7:
+            reminder_text, level = "7-day heads-up", "upcoming"
+        else:
+            reminder_text = f"Due in {days_left} days"
+            level = "warning" if days_left <= 3 else "upcoming"
+        bill_reminders.append({**bill, "days_left": days_left, "reminder_text": reminder_text, "level": level})
+    bill_reminders = bill_reminders[:5]
     upcoming_bills = upcoming_bills[:6]
     goals = SavingsGoal.objects.filter(user=request.user)[:3]
     user_accounts = list(Account.objects.filter(user=request.user, is_archived=False))
     total_balance = sum((a.current_balance for a in user_accounts if a.currency == currency), Decimal("0.00"))
-    context = {"income": income, "expenses": expenses, "net": income-expenses, "total_balance": total_balance, "accounts": user_accounts, "transactions": month_tx[:7], "budgets": budgets, "upcoming": upcoming, "upcoming_bills": upcoming_bills, "goals": goals, "month": today.strftime("%B %Y"), "assistant_ready": bool(__import__("os").environ.get("OPENAI_API_KEY"))}
+    context = {"income": income, "expenses": expenses, "net": income-expenses, "total_balance": total_balance, "accounts": user_accounts, "transactions": month_tx[:7], "budgets": budgets, "upcoming": upcoming, "upcoming_bills": upcoming_bills, "bill_reminders": bill_reminders, "goals": goals, "month": today.strftime("%B %Y"), "assistant_ready": bool(__import__("os").environ.get("OPENAI_API_KEY"))}
     return render(request, "finance/dashboard.html", context)
 
 @login_required
@@ -375,9 +395,15 @@ def calendar(request):
         elif item.next_date == today:
             status = "Due today"
             status_class = "due-today"
+        elif (item.next_date - today).days == 1:
+            status = "Due tomorrow · 1 day"
+            status_class = "due-tomorrow"
+        elif (item.next_date - today).days <= 3:
+            status = f"Due in {(item.next_date - today).days} days · 3-day reminder"
+            status_class = "due-3"
         elif (item.next_date - today).days <= 7:
-            status = "Due soon"
-            status_class = "due-soon"
+            status = f"Due in {(item.next_date - today).days} days · 7-day heads-up"
+            status_class = "due-7"
         else:
             status = "Upcoming"
             status_class = "upcoming"
