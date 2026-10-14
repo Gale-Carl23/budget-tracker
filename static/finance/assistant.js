@@ -37,10 +37,16 @@
     const confirm=document.createElement('button');confirm.type='button';confirm.className='btn';confirm.textContent='Confirm and save';
     const cancel=document.createElement('button');cancel.type='button';cancel.className='btn light';cancel.textContent='Cancel';
     const status=document.createElement('div');status.className='proposal-status';
+    let billRiskConfirmed=false;
+    let waitingForBillConfirmation=false;
+    fields.forEach(itemFields=>Object.values(itemFields).forEach(control=>control.addEventListener('input',()=>{
+      if(waitingForBillConfirmation){billRiskConfirmed=false;waitingForBillConfirmation=false;confirm.textContent='Confirm and save';status.textContent='The proposal changed. Review it again before saving.';status.className='proposal-status';}
+    })));
     confirm.onclick=async()=>{
+      if(waitingForBillConfirmation){billRiskConfirmed=true;waitingForBillConfirmation=false;}
       const payload=fields.map(row=>Object.fromEntries(Object.entries(row).map(([k,v])=>[k,v.value.trim()])));
       confirm.disabled=true;confirm.textContent='Saving…';
-      try { const response=await fetch(form.dataset.confirmUrl,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf},body:JSON.stringify({draft_token:token,transactions:payload,remember:remember.checked})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Could not save.');status.textContent=data.message;status.classList.add('success');confirm.remove();cancel.remove(); }
+      try { const response=await fetch(form.dataset.confirmUrl,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf},body:JSON.stringify({draft_token:token,transactions:payload,remember:remember.checked,confirm_bill_risk:billRiskConfirmed})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Could not save.');if(data.requires_confirmation){waitingForBillConfirmation=true;status.textContent=data.warning;status.className='proposal-status warning';confirm.disabled=false;confirm.textContent='Save anyway';return;}status.textContent=data.message;status.className='proposal-status success';confirm.remove();cancel.remove(); }
       catch(err){status.textContent=err.message;status.classList.add('error');confirm.disabled=false;confirm.textContent='Try saving again'}
     };
     cancel.onclick=()=>{card.remove();bubble('Okay, I didn’t save those proposed entries.')};

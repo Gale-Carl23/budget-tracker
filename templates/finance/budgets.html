@@ -7,7 +7,7 @@
   <div class="budget-amount">{{ budget.spent|money:user.profile.currency }} <small>of {{ budget.amount|money:user.profile.currency }}</small></div>
   <div class="progress"><i class="{% if budget.percent >= 85 %}warning{% endif %}" style="width:{{ budget.percent }}%"></i></div>
   <div class="budget-caption"><span>{{ budget.remaining|money:user.profile.currency }} remaining</span>{% if budget.rollover %}<span>Rollover on</span>{% endif %}</div>
-  <div class="row-actions budget-actions"><a class="btn light" href="{% url 'budget_edit' budget.pk %}">Edit budget</a></div>
+  <div class="row-actions budget-actions"><a class="btn light" href="{% url 'budget_edit' budget.pk %}">Edit budget</a><form method="post" action="{% url 'budget_delete' budget.pk %}" onsubmit="return confirm('Delete this budget? This will be recorded in your change history.');">{% csrf_token %}<button class="btn danger" type="submit">Delete</button></form></div>
 </article>
 {% empty %}<div class="panel empty">No budgets yet. Add a category budget to keep your month on track.</div>{% endfor %}
 </div>{% endblock %}

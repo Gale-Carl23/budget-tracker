@@ -13,6 +13,7 @@ urlpatterns = [
     path("budgets/", views.budgets, name="budgets"),
     path("budgets/add/", views.budget_add, name="budget_add"),
     path("budgets/<int:pk>/edit/", views.budget_edit, name="budget_edit"),
+    path("budgets/<int:pk>/delete/", views.budget_delete, name="budget_delete"),
     path("goals/", views.goals, name="goals"),
     path("goals/add/", views.goal_add, name="goal_add"),
     path("goals/<int:pk>/contribute/", views.goal_contribute, name="goal_contribute"),

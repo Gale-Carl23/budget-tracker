@@ -72,10 +72,22 @@ def dashboard(request):
     expenses = month_tx.filter(kind="expense").aggregate(v=Sum("amount"))["v"] or Decimal("0")
     budgets = Budget.objects.filter(user=request.user, starts_on__lte=today, ends_on__gte=today).select_related("category")
     upcoming = RecurringItem.objects.filter(user=request.user, is_active=True, next_date__gte=today).order_by("next_date")[:5]
+    forecast_end = today + timedelta(days=30)
+    upcoming_bills = []
+    scheduled_bills = RecurringItem.objects.filter(user=request.user, is_active=True, kind="bill").select_related("account").order_by("next_date")
+    for scheduled in scheduled_bills:
+        # Keep an unrecorded overdue occurrence visible, then include upcoming repeats.
+        if scheduled.next_date < today and (not scheduled.end_date or scheduled.next_date <= scheduled.end_date):
+            upcoming_bills.append({"item": scheduled, "due_date": scheduled.next_date, "overdue": True})
+        for due_date in _recurring_occurrences(scheduled, today, forecast_end):
+            if due_date >= today:
+                upcoming_bills.append({"item": scheduled, "due_date": due_date, "overdue": False})
+    upcoming_bills.sort(key=lambda bill: (bill["due_date"], bill["item"].name.lower()))
+    upcoming_bills = upcoming_bills[:6]
     goals = SavingsGoal.objects.filter(user=request.user)[:3]
     user_accounts = list(Account.objects.filter(user=request.user, is_archived=False))
     total_balance = sum((a.current_balance for a in user_accounts if a.currency == currency), Decimal("0.00"))
-    context = {"income": income, "expenses": expenses, "net": income-expenses, "total_balance": total_balance, "accounts": user_accounts, "transactions": month_tx[:7], "budgets": budgets, "upcoming": upcoming, "goals": goals, "month": today.strftime("%B %Y"), "assistant_ready": bool(__import__("os").environ.get("OPENAI_API_KEY"))}
+    context = {"income": income, "expenses": expenses, "net": income-expenses, "total_balance": total_balance, "accounts": user_accounts, "transactions": month_tx[:7], "budgets": budgets, "upcoming": upcoming, "upcoming_bills": upcoming_bills, "goals": goals, "month": today.strftime("%B %Y"), "assistant_ready": bool(__import__("os").environ.get("OPENAI_API_KEY"))}
     return render(request, "finance/dashboard.html", context)
 
 @login_required
@@ -112,7 +124,12 @@ def transaction_add(request):
     seed_defaults(request.user)
     form = TransactionForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
-        item = form.save(commit=False); item.user = request.user; item.currency = item.account.currency; item.full_clean(); item.save()
+        item = form.save(commit=False); item.user = request.user; item.currency = item.account.currency
+        bill_risk = _bill_shortfall_warning(request.user, item.account, item.amount) if item.kind == "expense" else None
+        if bill_risk and not _bill_risk_confirmation_matches(request, item.account, item.amount):
+            confirmation = signing.dumps({"user": request.user.pk, "account": item.account.pk, "amount": str(item.amount)}, salt="bill-risk-confirmation")
+            return render(request, "finance/form.html", {"form": form, "title": "Add transaction", "cancel_url": "transactions", "bill_risk": bill_risk, "bill_risk_confirmation": confirmation})
+        item.full_clean(); item.save()
         audit(request.user, "create", "transaction", item.pk, f"Added {item.kind}: {item.description} · {item.currency} {item.amount}", after=tx_snapshot(item))
         messages.success(request, "Transaction added.")
         return redirect("transactions")
@@ -180,6 +197,16 @@ def budget_edit(request, pk):
         messages.success(request, "Budget updated.")
         return redirect("budgets")
     return render(request, "finance/form.html", {"form": form, "title": "Edit budget", "cancel_url": "budgets"})
+
+@login_required
+@require_POST
+def budget_delete(request, pk):
+    item = get_object_or_404(Budget.objects.select_related("category"), pk=pk, user=request.user)
+    snapshot = {"category": item.category.name, "amount": str(item.amount), "starts_on": item.starts_on.isoformat(), "ends_on": item.ends_on.isoformat(), "rollover": item.rollover}
+    audit(request.user, "delete", "budget", item.pk, f"Deleted budget for {item.category.name}", before=snapshot)
+    item.delete()
+    messages.success(request, "Budget deleted. The change is recorded in your history.")
+    return redirect("budgets")
 
 @login_required
 def goals(request):
@@ -257,6 +284,47 @@ def _next_recurring_date(current, frequency):
     if frequency == "monthly":
         return _add_months(current, 1)
     return _add_years(current, 1)
+
+def _bill_shortfall_warning(user, account, planned_spend, as_of=None):
+    """Return a warning when a proposed purchase would leave a scheduled bill short."""
+    as_of = as_of or timezone.localdate()
+    forecast_end = as_of + timedelta(days=30)
+    scheduled = RecurringItem.objects.filter(
+        user=user, account=account, is_active=True,
+        next_date__lte=forecast_end,
+    ).select_related("account")
+    events = []
+    for item in scheduled:
+        if item.kind == "bill" and item.next_date < as_of:
+            events.append((item.next_date, 1, item))
+        for due_date in _recurring_occurrences(item, as_of, forecast_end):
+            events.append((due_date, 0 if item.kind == "income" else 1, item))
+    events.sort(key=lambda event: (event[0], event[1]))
+    if not any(item.kind == "bill" for _, _, item in events):
+        return None
+
+    balance = account.current_balance - planned_spend
+    for due_date, _, item in events:
+        if item.kind == "income":
+            balance += item.amount
+            continue
+        balance -= item.amount
+        if balance < 0:
+            return {
+                "bill_name": item.name,
+                "due_date": due_date,
+                "shortfall": -balance,
+                "account_name": account.name,
+                "currency": account.currency,
+            }
+    return None
+
+def _bill_risk_confirmation_matches(request, account, amount):
+    try:
+        confirmation = signing.loads(request.POST.get("bill_risk_confirmation", ""), salt="bill-risk-confirmation", max_age=900)
+    except signing.BadSignature:
+        return False
+    return confirmation == {"user": request.user.pk, "account": account.pk, "amount": str(amount)}
 
 @login_required
 def calendar(request):
@@ -562,6 +630,28 @@ def assistant_confirm(request):
         entries = data.get("transactions", payload.get("transactions", []))
         if not entries or len(entries) > 20:
             return JsonResponse({"error": "There are no valid transactions to save."}, status=400)
+        if not data.get("confirm_bill_risk"):
+            proposed_spend = {}
+            for entry in entries:
+                if entry.get("kind") != "expense":
+                    continue
+                account = get_object_or_404(Account, user=request.user, name=entry.get("account"), is_archived=False)
+                try:
+                    amount = Decimal(str(entry.get("amount", "")))
+                except (ValueError, TypeError, ArithmeticError):
+                    continue
+                if amount.is_finite() and amount > 0:
+                    proposed_spend[account.pk] = (account, proposed_spend.get(account.pk, (account, Decimal("0.00")))[1] + amount)
+            for account, amount in proposed_spend.values():
+                bill_risk = _bill_shortfall_warning(request.user, account, amount)
+                if bill_risk:
+                    due_date = bill_risk["due_date"]
+                    warning = (
+                        f"These expenses may leave {bill_risk['shortfall']:.2f} {bill_risk['currency']} "
+                        f"short in {bill_risk['account_name']} for {bill_risk['bill_name']} due "
+                        f"{due_date.strftime('%b')} {due_date.day}. You can still choose to save them."
+                    )
+                    return JsonResponse({"requires_confirmation": True, "warning": warning})
         saved = []
         with db_transaction.atomic():
             for entry in entries:
