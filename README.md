@@ -24,7 +24,27 @@ Nibi is a website-first personal finance tracker built with Django, server-rende
 
 ## Production configuration
 
-Production configuration is intentionally strict. With `DJANGO_DEBUG=False`, Nibi requires a non-development secret key, explicit allowed hosts, and a PostgreSQL `DATABASE_URL`; it rejects SQLite and the development server defaults. SMTP settings are required so users can recover their passwords. Start from `.env.production.example`, replace every example value, and enter secrets in the hosting provider’s secret manager rather than committing an environment file.
+Production configuration is intentionally strict. With `DJANGO_DEBUG=False`, Nibi requires a non-development secret key, an allowed host supplied by the hosting provider or configured explicitly, and a PostgreSQL `DATABASE_URL`; it rejects SQLite and the development server defaults. SMTP settings are required so users can recover their passwords. Start from `.env.production.example`, replace every example value, and enter secrets in the hosting provider’s secret manager rather than committing an environment file.
+
+## Deploy to Render
+
+The repository is prepared for Render's Python web service. Render assigns a free `onrender.com` subdomain and HTTPS certificate; the app reads Render's assigned hostname and URL automatically. You do not need to buy a domain to get started.
+
+1. Push the project to GitHub, then in Render choose **New > PostgreSQL**. Pick a region and a plan that fits your use. For real finance records, use a database plan with ongoing storage and backups; Render's free PostgreSQL databases expire after 30 days.
+2. Create a **Web Service** from `Gale-Carl23/budget-tracker`, branch `main`, runtime **Python 3**. The repository root is the service root.
+3. Set the build command to `bash build.sh` and the start command to `python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`.
+4. Add the following environment values in the Render service. Use the database's **Internal Database URL** for `DATABASE_URL`; use Render's **Generate** option for `DJANGO_SECRET_KEY`.
+
+   - `DJANGO_DEBUG` = `False`
+   - `DJANGO_SECRET_KEY` = generated secret
+   - `DATABASE_URL` = internal URL from the PostgreSQL service
+   - `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and `DEFAULT_FROM_EMAIL` = credentials from your transactional email provider
+   - `EMAIL_USE_TLS` = `True` (for providers using STARTTLS on port 587)
+   - `OPENAI_API_KEY` = optional; leave unset until you want to enable the assistant
+
+Render supplies the app hostname and HTTPS URL automatically, so Nibi fills `ALLOWED_HOSTS`, CSRF trusted origins, and Render's trusted HTTPS proxy setting for the default `onrender.com` address. If you later add a custom domain, add it to `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS` in the service settings.
+
+The free web service sleeps after 15 minutes without requests. Render's free web service also cannot send outbound SMTP, which this app needs for password resets; use a paid web service or add an HTTPS email API integration before relying on password recovery. The free PostgreSQL database expires after 30 days and has no backups, so do not store real financial records there. Review Render's current plan and database terms before creating services.
 
 Required provider settings:
 

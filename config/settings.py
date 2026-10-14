@@ -14,14 +14,20 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in {"true", "1", "yes"}
 if not DEBUG and (not SECRET_KEY or SECRET_KEY == "dev-only-change-this-before-deploying"):
     raise RuntimeError("Set DJANGO_SECRET_KEY before running with DEBUG=False.")
 configured_hosts = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
+render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip()
+if render_hostname and render_hostname not in configured_hosts:
+    configured_hosts.append(render_hostname)
 if not DEBUG and not configured_hosts:
-    raise RuntimeError("Set DJANGO_ALLOWED_HOSTS to your production domain before deploying.")
+    raise RuntimeError("Set DJANGO_ALLOWED_HOSTS or deploy on a host that supplies RENDER_EXTERNAL_HOSTNAME.")
 ALLOWED_HOSTS = configured_hosts or ["127.0.0.1", "localhost"]
 
 def env_bool(name, default="False"):
     return os.environ.get(name, default).strip().lower() in {"true", "1", "yes"}
 
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()]
+render_external_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+if render_external_url and render_external_url not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(render_external_url)
 AI_REQUESTS_PER_MINUTE = max(1, int(os.environ.get("AI_REQUESTS_PER_MINUTE", "10")))
 AI_REQUESTS_PER_DAY = max(1, int(os.environ.get("AI_REQUESTS_PER_DAY", "100")))
 OPENAI_MAX_OUTPUT_TOKENS = max(100, int(os.environ.get("OPENAI_MAX_OUTPUT_TOKENS", "700")))
@@ -32,7 +38,8 @@ INSTALLED_APPS = [
     "finance.apps.FinanceConfig",
 ]
 MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware", "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.security.SecurityMiddleware", "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware", "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware", "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -80,6 +87,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -119,6 +130,8 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("DJANGO_HSTS_INCLUDE_SUBDOMAINS")
     SECURE_HSTS_PRELOAD = env_bool("DJANGO_HSTS_PRELOAD")
     SECURE_REFERRER_POLICY = "same-origin"
+    if os.environ.get("RENDER"):
+        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     proxy_ssl_header = os.environ.get("DJANGO_SECURE_PROXY_SSL_HEADER", "").strip()
     if proxy_ssl_header:
         header, separator, value = proxy_ssl_header.partition(",")
