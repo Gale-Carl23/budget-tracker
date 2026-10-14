@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+!.env.production.example
+*.sqlite3
+__pycache__/
+*.py[cod]
+.venv/
+staticfiles/
+media/
+*.log
+.pytest_cache/

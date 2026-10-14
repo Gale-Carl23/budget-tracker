@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Change history{% endblock %}
+{% block heading %}Change history{% endblock %}
+{% block content %}
+<div class="page-intro"><p>A transparent record of updates to your money ledger. Supported transaction changes can be undone.</p></div>
+<section class="panel history-table">
+<div class="history-head"><span>When</span><span>Action</span><span>Details</span><span>Source</span><span></span></div>
+{% for entry in entries %}<div class="history-row"><span>{{ entry.created_at|date:"M j, Y · H:i" }}</span><span>{{ entry.get_action_display }}{% if entry.undone %}<small class="muted"> · undone</small>{% endif %}</span><span>{{ entry.summary }}</span><span><span class="source-tag">{{ entry.get_source_display }}</span></span><span>{% if not entry.undone and entry.entity == 'transaction' and entry.action != 'undo' %}<form method="post" action="{% url 'undo_history' entry.pk %}">{% csrf_token %}<button class="btn light small">Undo</button></form>{% endif %}</span></div>{% empty %}<div class="empty">Changes to your accounts, budgets, transactions, and assistant preferences will appear here.</div>{% endfor %}
+</section>
+{% endblock %}

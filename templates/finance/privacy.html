@@ -1,0 +1,4 @@
+{% extends "base.html" %}
+{% block title %}Privacy & AI{% endblock %}
+{% block content %}<div class="page-intro"><p>How Nibi handles account data and AI assistant requests.</p></div>{% include "finance/_privacy_content.html" %}{% endblock %}
+{% block public %}<div class="auth-wrap"><a class="brand" href="{% url 'landing' %}"><span class="brandmark">✳</span><span>Nibi</span></a>{% include "finance/_privacy_content.html" %}<p class="auth-foot"><a href="{% url 'landing' %}">Return to Nibi</a></p></div>{% endblock %}
