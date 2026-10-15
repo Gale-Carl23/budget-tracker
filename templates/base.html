@@ -11,43 +11,77 @@
   <link rel="stylesheet" href="{% static 'finance/app.css' %}">
 </head>
 <body>
+<svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-arrows" viewBox="0 0 24 24"><path d="M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V11m5 9V5m5 15v-7m5 7V3M2 20h20"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h15a2 2 0 0 1 2 2v11H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h13v3m3 5h-5a2 2 0 0 0 0 4h5"/><path d="M16 13h.01"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/></symbol>
+  <symbol id="i-bank" viewBox="0 0 24 24"><path d="m3 9 9-6 9 6M4 10h16M5 10v9m4-9v9m6-9v9m4-9v9M3 21h18M2 19h20"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4m14-1v2a3 3 0 0 1-3 3H3"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 3v3m-2-3h4M5 9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM2 12v3m20-3v3"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M9 16h6"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8m0-5v5h5m4-1v5l3 2"/></symbol>
+  <symbol id="i-brain" viewBox="0 0 24 24"><path d="M12 18V5a3 3 0 0 0-5.8-1A4 4 0 0 0 4 11a4 4 0 0 0 2 7.5A3 3 0 0 0 12 18Zm0-9a3 3 0 0 1 5.8-1A4 4 0 0 1 20 14a4 4 0 0 1-2 7.5A3 3 0 0 1 12 19"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5m5 5H3m9-9h6a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="m19.4 15 .1.1-1.4 2.4-.2-.1a2 2 0 0 0-2 .1 2 2 0 0 0-1 1.7v.3h-2.8v-.3a2 2 0 0 0-1-1.7 2 2 0 0 0-2-.1l-.2.1-1.4-2.4.2-.1A2 2 0 0 0 8.7 13a2 2 0 0 0-1.5-1H7v-2.8h.2a2 2 0 0 0 1.5-1 2 2 0 0 0-.1-2l-.1-.2 2.4-1.4.1.2a2 2 0 0 0 1.7 1 2 2 0 0 0 1.7-1l.1-.2 2.4 1.4-.1.2a2 2 0 0 0 .1 2 2 2 0 0 0 1.7 1h.3v2.8h-.3a2 2 0 0 0-1.7 1 2 2 0 0 0 .1 2Z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m18 6-12 12M6 6l12 12"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18m-2 0-.9 14H5.9L5 6m4 0V4h6v2m-5 4v6m4-6v6"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3.4 13.4a2 2 0 0 1 0-2.8l7.2-7.2A2 2 0 0 1 12 3h7a2 2 0 0 1 2 2v7a2 2 0 0 1-.4 1.4Z"/><circle cx="16.5" cy="7.5" r=".5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 13h4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m10.3 3.9-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3.1l-8-14a2 2 0 0 0-3.4 0ZM12 9v4m0 4h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-sprout" viewBox="0 0 24 24"><path d="M12 22v-9m0 3c0-6-4-9-9-9 0 5 3 9 9 9Zm0-3c0-5 3-8 9-8 0 5-3 8-9 8Z"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20m-15 5h3"/></symbol>
+  <symbol id="i-cash" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 10a2 2 0 0 0-2 2m14 3a2 2 0 0 0 2-2"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 3v18l4-2 4 2 4-2 4 2V3l-4 2-4-2-4 2-4-2Z"/><path d="M8 9h8m-8 4h8"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7v10H7"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7ZM22 2 11 13"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Zm7 11 .9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14ZM5 2l.7 1.8L7.5 4.5l-1.8.7L5 7l-.7-1.8L2.5 4.5l1.8-.7L5 2Z"/></symbol>
+</svg>
 {% if user.is_authenticated %}
 <div class="layout">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation">
     <div class="sidebar-top">
       <a class="brand" href="{% url 'dashboard' %}"><img class="brandmark" src="{% static 'finance/nibi-cat.png' %}" alt=""><span>Nibi</span></a>
-      <button class="sidebar-close" id="sidebar-close" type="button" aria-label="Close navigation">×</button>
+      <button class="sidebar-close" id="sidebar-close" type="button" aria-label="Close navigation"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
     <div>
       <div class="navlabel">YOUR MONEY</div>
       <nav class="nav">
-        <a class="{% if active == 'home' %}active{% endif %}" href="{% url 'dashboard' %}"><span>🏠</span>Overview</a>
-        <a class="{% if active == 'transactions' %}active{% endif %}" href="{% url 'transactions' %}"><span>💳</span>Transactions</a>
-        <a class="{% if active == 'reports' %}active{% endif %}" href="{% url 'reports' %}"><span>📊</span>Reports</a>
-        <a class="{% if active == 'budgets' %}active{% endif %}" href="{% url 'budgets' %}"><span>🧾</span>Budgets</a>
-        <a class="{% if active == 'calendar' %}active{% endif %}" href="{% url 'calendar' %}"><span>🗓️</span>Calendar &amp; bills</a>
-        <a class="{% if active == 'accounts' %}active{% endif %}" href="{% url 'accounts' %}"><span>🏦</span>Accounts</a>
-        <a class="{% if active == 'goals' %}active{% endif %}" href="{% url 'goals' %}"><span>🌱</span>Savings goals</a>
-        <a class="{% if active == 'debts' %}active{% endif %}" href="{% url 'debts' %}"><span>🔄</span>Debts &amp; owed</a>
-        <a class="{% if active == 'assistant' %}active{% endif %}" href="{% url 'assistant' %}"><span>🐱</span>Money assistant</a>
-        <a class="{% if active == 'history' %}active{% endif %}" href="{% url 'history' %}"><span>🕘</span>Change history</a>
+        <a class="{% if active == 'home' %}active{% endif %}" href="{% url 'dashboard' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>Overview</a>
+        <a class="{% if active == 'transactions' %}active{% endif %}" href="{% url 'transactions' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-arrows"/></svg></span>Transactions</a>
+        <a class="{% if active == 'reports' %}active{% endif %}" href="{% url 'reports' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg></span>Reports</a>
+        <a class="{% if active == 'budgets' %}active{% endif %}" href="{% url 'budgets' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></span>Budgets</a>
+        <a class="{% if active == 'calendar' %}active{% endif %}" href="{% url 'calendar' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></span>Calendar &amp; bills</a>
+        <a class="{% if active == 'accounts' %}active{% endif %}" href="{% url 'accounts' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-bank"/></svg></span>Accounts</a>
+        <a class="{% if active == 'goals' %}active{% endif %}" href="{% url 'goals' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-target"/></svg></span>Savings goals</a>
+        <a class="{% if active == 'debts' %}active{% endif %}" href="{% url 'debts' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-repeat"/></svg></span>Debts &amp; owed</a>
+        <a class="{% if active == 'assistant' %}active{% endif %}" href="{% url 'assistant' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-bot"/></svg></span>Money assistant</a>
+        <a class="{% if active == 'history' %}active{% endif %}" href="{% url 'history' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-history"/></svg></span>Change history</a>
       </nav>
     </div>
     <div class="sidebar-bottom">
       <div class="navlabel">PREFERENCES</div>
       <nav class="nav">
-        <a href="{% url 'preferences' %}"><span>🧠</span>Assistant memory</a>
-        <a href="{% url 'profile_settings' %}"><span>⚙️</span>Settings</a>
-        <a href="{% url 'export_csv' %}"><span>📤</span>Export data</a>
+        <a href="{% url 'preferences' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-brain"/></svg></span>Assistant memory</a>
+        <a href="{% url 'profile_settings' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></span>Settings</a>
+        <a href="{% url 'export_csv' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></span>Export data</a>
       </nav>
-      <div class="profile"><span class="avatar">{{ user.username|first|upper }}</span><span><b>{{ user.username }}</b><small>Personal account</small></span><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout" title="Sign out">↗</button></form></div>
+      <div class="profile"><span class="avatar">{{ user.username|first|upper }}</span><span><b>{{ user.username }}</b><small>Personal account</small></span><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout" title="Sign out"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg></button></form></div>
     </div>
   </aside>
   <button class="sidebar-backdrop" id="sidebar-backdrop" type="button" aria-label="Close navigation"></button>
   <main class="main">
     <header class="topbar">
-      <div class="topstart"><button class="mobile-menu" id="menu" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button><div><div class="eyebrow">YOUR MONEY, MADE CLEARER</div><div class="topname">{% block heading %}Overview{% endblock %}</div></div></div>
-      <div class="topactions"><span class="status-pill"><i></i>Private workspace</span><a class="btn" href="{% url 'transaction_add' %}">＋ Add transaction</a></div>
+      <div class="topstart"><button class="mobile-menu" id="menu" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg></button><div><div class="eyebrow">YOUR MONEY, MADE CLEARER</div><div class="topname">{% block heading %}Overview{% endblock %}</div></div></div>
+      <div class="topactions"><span class="status-pill"><i></i>Private workspace</span><a class="btn" href="{% url 'transaction_add' %}"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Add transaction</a></div>
     </header>
     {% if messages %}<div class="messages">{% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
     {% block content %}{% endblock %}

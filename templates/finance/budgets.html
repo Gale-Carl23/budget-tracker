@@ -1,9 +1,9 @@
 {% extends "base.html" %}{% load money %}{% block title %}Budgets{% endblock %}{% block heading %}Budgets{% endblock %}{% block content %}
-<div class="page-intro"><p>Set a limit for each category, then adjust it as your plans change.</p><a class="btn" href="{% url 'budget_add' %}">＋ Create budget</a></div>
+<div class="page-intro"><p>Set a limit for each category, then adjust it as your plans change.</p><a class="btn" href="{% url 'budget_add' %}"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Create budget</a></div>
 <div class="card-grid">
 {% for budget in budgets %}
 <article class="panel budget-card">
-  <div class="panel-head"><div><h2>{{ budget.category.icon }} &nbsp;{{ budget.category.name }}</h2><p>{{ budget.starts_on|date:"M j, Y" }} – {{ budget.ends_on|date:"M j, Y" }}</p></div><span class="budget-badge {% if budget.percent >= 85 %}warning{% endif %}">{{ budget.percent }}%</span></div>
+  <div class="panel-head"><div><h2><svg class="icon category-mark" aria-hidden="true"><use href="#i-tag"/></svg>{{ budget.category.name }}</h2><p>{{ budget.starts_on|date:"M j, Y" }} – {{ budget.ends_on|date:"M j, Y" }}</p></div><span class="budget-badge {% if budget.percent >= 85 %}warning{% endif %}">{{ budget.percent }}%</span></div>
   <div class="budget-amount">{{ budget.spent|money:user.profile.currency }} <small>of {{ budget.amount|money:user.profile.currency }}</small></div>
   <div class="progress"><i class="{% if budget.percent >= 85 %}warning{% endif %}" style="width:{{ budget.percent }}%"></i></div>
   <div class="budget-caption"><span>{{ budget.remaining|money:user.profile.currency }} remaining</span>{% if budget.rollover %}<span>Rollover on</span>{% endif %}</div>

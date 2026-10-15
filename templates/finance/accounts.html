@@ -3,11 +3,11 @@
 {% block title %}Accounts{% endblock %}
 {% block heading %}Accounts{% endblock %}
 {% block content %}
-<div class="page-intro"><div><p>All your account balances, together.</p></div><a class="btn" href="{% url 'account_add' %}">＋ Add account</a></div>
+<div class="page-intro"><div><p>All your account balances, together.</p></div><a class="btn" href="{% url 'account_add' %}"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Add account</a></div>
 <div class="card-grid">
   {% for account in accounts %}
   <article class="panel account-card {% if account.is_archived %}account-archived{% endif %}">
-    <div class="account-card-head"><span class="account-icon">{% if account.kind == 'savings' %}🌱{% elif account.kind == 'credit' %}💳{% elif account.kind == 'cash' %}💵{% elif account.kind == 'wallet' %}👛{% else %}🏦{% endif %}</span>{% if account.is_archived %}<span class="account-state">Archived</span>{% endif %}</div>
+    <div class="account-card-head"><span class="account-icon">{% if account.kind == 'savings' %}<svg class="icon" aria-hidden="true"><use href="#i-sprout"/></svg>{% elif account.kind == 'credit' %}<svg class="icon" aria-hidden="true"><use href="#i-card"/></svg>{% elif account.kind == 'cash' %}<svg class="icon" aria-hidden="true"><use href="#i-cash"/></svg>{% elif account.kind == 'wallet' %}<svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg>{% else %}<svg class="icon" aria-hidden="true"><use href="#i-bank"/></svg>{% endif %}</span>{% if account.is_archived %}<span class="account-state">Archived</span>{% endif %}</div>
     <div class="eyebrow">{{ account.get_kind_display|upper }}</div>
     <h2>{{ account.name }}</h2>
     <strong>{{ account.current_balance|money:account.currency }}</strong>
@@ -15,7 +15,7 @@
     {% if account.is_archived %}<small class="account-archived-note">Archived accounts are excluded from new transactions.</small>{% endif %}
     <div class="account-actions">
       <form method="post" action="{% url 'account_archive' account.pk %}">{% csrf_token %}<button class="btn light" type="submit">{% if account.is_archived %}Restore{% else %}Archive{% endif %}</button></form>
-      <form method="post" action="{% url 'account_remove' account.pk %}" onsubmit="return confirm('Delete {{ account.name|escapejs }}? Accounts linked to transactions, bills, debt payments, or savings goals will be kept; archive those instead.');">{% csrf_token %}<button class="btn danger" type="submit">🗑 Delete</button></form>
+      <form method="post" action="{% url 'account_remove' account.pk %}" onsubmit="return confirm('Delete {{ account.name|escapejs }}? Accounts linked to transactions, bills, debt payments, or savings goals will be kept; archive those instead.');">{% csrf_token %}<button class="btn danger" type="submit"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Delete</button></form>
     </div>
   </article>
   {% empty %}<div class="panel empty">No accounts yet. Add an account to start tracking balances.</div>{% endfor %}

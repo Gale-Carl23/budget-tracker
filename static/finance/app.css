@@ -47,3 +47,25 @@ body{font-size:14px;line-height:1.55}
 .bill-alert.critical{background:var(--danger-soft);border-color:var(--danger)}
 .bill-alert.critical .bill-alert-mark{color:var(--danger)}
 .bill-alert.critical .bill-alert-stage,.bill-alert.critical .bill-alert-copy strong,.bill-alert.critical .bill-alert-amount{color:var(--danger)}
+
+/* Shared outline icon set */
+.icon-library{position:absolute;width:0;height:0;overflow:hidden}
+svg.icon{display:inline-block;width:18px;height:18px;flex:0 0 18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+.nav a span{display:grid;place-items:center}
+.btn .icon{width:16px;height:16px;flex-basis:16px}
+.logout .icon{width:17px;height:17px}
+.account-icon,.tx-emoji,.assistant-badge,.reminder-bell,.bill-icon,.goal-emoji,.soft-icon{color:var(--muted);filter:none}
+.account-icon svg,.tx-emoji svg,.assistant-badge svg,.reminder-bell svg,.bill-icon svg,.goal-emoji svg,.soft-icon svg{width:19px;height:19px}
+.assistant-badge svg{color:var(--lime)}
+.feature-stat .stat-label .icon{color:var(--lime)}
+.status-pill .status-icon{color:var(--green)}
+.calendar-nav .icon{width:15px;height:15px;flex-basis:15px}
+.danger .icon{color:currentColor}
+.sidebar-close .icon{width:17px;height:17px}
+.category-mark{display:inline-block;width:15px;height:15px;vertical-align:-3px;margin-right:7px;color:var(--muted)}
+.preview-change{display:flex;align-items:center;gap:5px}
+.preview-transactions span{display:flex;align-items:center;gap:8px}
+.preview-transactions .icon{width:16px;height:16px;color:var(--muted)}
+.landing .feature-strip .icon{width:17px;height:17px}
+.landing .trust-line{display:flex;align-items:center;gap:7px}
+.chip .icon{width:15px;height:15px;color:var(--muted)}
