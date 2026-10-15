@@ -31,3 +31,19 @@ body{font-size:14px;line-height:1.55}
 .btn{font-size:12px;font-weight:600}
 .profile b{font-size:12px;font-weight:700}
 @media(max-width:700px){.topname{font-size:21px}.stat-card strong{font-size:22px}.account-card strong{font-size:22px}}
+
+/* Calm icon treatment, a clear dashboard greeting, and unmistakable danger states. */
+:root{--danger:#c0392b;--danger-soft:#fceae8}
+.topname{display:flex;align-items:baseline;gap:.34em;flex-wrap:wrap}
+.greeting-main{color:#171b19;font-weight:700}
+.greeting-user{color:var(--green);font-weight:700}
+.nav a span,.account-icon,.tx-emoji,.assistant-badge,.reminder-bell,.bill-icon,.goal-emoji,.soft-icon{filter:grayscale(1)}
+.negative,.field-error,.form-field em,.row-actions form button,.text-danger{color:var(--danger)!important}
+.positive{color:var(--green)!important}
+.message.error,.form-errors{background:var(--danger-soft);color:var(--danger)}
+.btn.danger{background:var(--danger-soft);border:1px solid var(--danger);color:var(--danger)}
+.btn.danger:hover{background:var(--danger);color:#fff}
+.budget-badge.warning,.bill-status.due-tomorrow{background:var(--danger-soft);color:var(--danger)}
+.bill-alert.critical{background:var(--danger-soft);border-color:var(--danger)}
+.bill-alert.critical .bill-alert-mark{color:var(--danger)}
+.bill-alert.critical .bill-alert-stage,.bill-alert.critical .bill-alert-copy strong,.bill-alert.critical .bill-alert-amount{color:var(--danger)}
