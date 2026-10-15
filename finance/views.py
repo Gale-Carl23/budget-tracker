@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.db import IntegrityError, transaction as db_transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -179,7 +179,7 @@ def transaction_delete(request, pk):
 
 @login_required
 def accounts(request):
-    return render(request, "finance/accounts.html", {"accounts": Account.objects.filter(user=request.user)})
+    return render(request, "finance/accounts.html", {"accounts": Account.objects.filter(user=request.user).order_by("is_archived", "name")})
 
 @login_required
 def account_add(request):
@@ -190,6 +190,35 @@ def account_add(request):
         messages.success(request, "Account created.")
         return redirect("accounts")
     return render(request, "finance/form.html", {"form": form, "title": "Add account", "cancel_url": "accounts"})
+
+@login_required
+@require_POST
+def account_remove(request, pk):
+    account = get_object_or_404(Account, pk=pk, user=request.user)
+    has_transactions = Transaction.objects.filter(user=request.user).filter(Q(account=account) | Q(destination=account)).exists()
+    has_scheduled_items = RecurringItem.objects.filter(user=request.user, account=account).exists()
+    has_debt_payments = DebtPayment.objects.filter(account=account, debt__user=request.user).exists()
+    has_goals = SavingsGoal.objects.filter(user=request.user, account=account).exists()
+    if has_transactions or has_scheduled_items or has_debt_payments or has_goals:
+        messages.error(request, "This account is linked to financial records or savings goals and can’t be deleted. Archive it to keep its history safely.")
+        return redirect("accounts")
+    snapshot = {"name": account.name, "kind": account.kind, "opening_balance": str(account.opening_balance), "currency": account.currency}
+    audit(request.user, "delete", "account", account.pk, f"Deleted account: {account.name}", before=snapshot)
+    account.delete()
+    messages.success(request, f"{account.name} deleted. The change is recorded in your history.")
+    return redirect("accounts")
+
+@login_required
+@require_POST
+def account_archive(request, pk):
+    account = get_object_or_404(Account, pk=pk, user=request.user)
+    was_archived = account.is_archived
+    account.is_archived = not was_archived
+    account.save(update_fields=["is_archived"])
+    action = "Restored" if was_archived else "Archived"
+    audit(request.user, "update", "account", account.pk, f"{action} account: {account.name}", before={"is_archived": was_archived}, after={"is_archived": account.is_archived})
+    messages.success(request, f"{account.name} {action.lower()}. Its financial history is preserved.")
+    return redirect("accounts")
 
 @login_required
 def budgets(request):

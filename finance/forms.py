@@ -38,8 +38,7 @@ class SignupForm(forms.Form):
 class AccountForm(forms.ModelForm):
     class Meta:
         model = Account
-        fields = ["name", "kind", "opening_balance", "currency", "color"]
-        widgets = {"color": forms.TextInput(attrs={"type": "color"})}
+        fields = ["name", "kind", "opening_balance", "currency"]
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs); self.user = user
         if not self.instance.pk: self.instance.user = user
