@@ -1,10 +1,66 @@
-{% extends "base.html" %}{% load money %}{% block title %}Overview{% endblock %}{% block heading %}<span class="greeting-main">Good day</span><span class="greeting-user">{{ user.username }}</span>{% endblock %}{% block content %}
-<div class="welcome-line"><p>Here’s your money at a glance for <b>{{ month }}</b>.</p><span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-sparkles"/></svg>A little more clarity, every day</span></div>
-{% if bill_reminders %}<section class="bill-reminders" aria-label="Bill reminders"><div class="bill-reminders-heading"><span class="reminder-bell"><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg></span><div><strong>Bill reminders</strong><small>Upcoming payments that may need your attention</small></div><a class="text-link" href="{% url 'calendar' %}">View calendar →</a></div><div class="bill-reminder-list">{% for reminder in bill_reminders %}<article class="bill-alert {{ reminder.level }}"><span class="bill-alert-mark">{% if reminder.level == 'critical' %}<svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>{% else %}<svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>{% endif %}</span><div class="bill-alert-copy"><span class="bill-alert-stage">{{ reminder.reminder_text }}</span><strong>{{ reminder.item.name }}</strong><small>{{ reminder.due_date|date:"M j" }} · {{ reminder.item.account.name }}</small></div><b class="bill-alert-amount">{{ reminder.item.account.currency }} {{ reminder.item.amount|floatformat:2 }}</b></article>{% endfor %}</div></section>{% endif %}
-<section class="stats-grid"><article class="stat-card feature-stat"><div class="stat-label">TOTAL BALANCE <span class="soft-icon"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></span></div><strong>{{ total_balance|money:user.profile.currency }}</strong><small>Across {{ accounts|length }} account{{ accounts|length|pluralize }}</small></article><article class="stat-card"><div class="stat-label">INCOME <span class="soft-icon"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg></span></div><strong>{{ income|money:user.profile.currency }}</strong><small>This month</small></article><article class="stat-card"><div class="stat-label">EXPENSES <span class="soft-icon"><svg class="icon" aria-hidden="true"><use href="#i-up"/></svg></span></div><strong>{{ expenses|money:user.profile.currency }}</strong><small>This month</small></article><article class="stat-card"><div class="stat-label">NET CASH FLOW <span class="soft-icon"><svg class="icon" aria-hidden="true"><use href="#i-arrows"/></svg></span></div><strong class="{% if net < 0 %}negative{% else %}positive{% endif %}">{{ net|money:user.profile.currency }}</strong><small>Income minus expenses</small></article></section>
-<section class="dashboard-grid"><article class="panel"><div class="panel-head"><div><h2>Your accounts</h2><p>Current balances</p></div><a class="text-link" href="{% url 'accounts' %}">Manage →</a></div><div class="account-list">{% for account in accounts %}<div class="account-row"><span class="account-icon">{% if account.kind == 'savings' %}<svg class="icon" aria-hidden="true"><use href="#i-sprout"/></svg>{% elif account.kind == 'credit' %}<svg class="icon" aria-hidden="true"><use href="#i-card"/></svg>{% elif account.kind == 'cash' %}<svg class="icon" aria-hidden="true"><use href="#i-cash"/></svg>{% elif account.kind == 'wallet' %}<svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg>{% else %}<svg class="icon" aria-hidden="true"><use href="#i-bank"/></svg>{% endif %}</span><span class="account-info"><b>{{ account.name }}</b><small>{{ account.get_kind_display }}</small></span><b class="account-balance">{{ account.current_balance|money:account.currency }}</b></div>{% empty %}<div class="empty">Add an account to see your balances here.</div>{% endfor %}</div></article>
-<article class="panel assistant-teaser"><div class="assistant-badge"><svg class="icon" aria-hidden="true"><use href="#i-bot"/></svg></div><h2>Talk through your money</h2><p>Log a purchase or ask about your budget in everyday language.</p><div class="sample-message">“I spent $18 on lunch today”</div><a class="btn full" href="{% url 'assistant' %}">Open money assistant <span>→</span></a>{% if not assistant_ready %}<small class="setup-hint">AI needs an API key in the server environment.</small>{% endif %}</article></section>
-<section class="dashboard-grid"><article class="panel upcoming-bills-panel"><div class="panel-head"><div><h2>Upcoming bills</h2><p>Planned expenses in the next 30 days</p></div><a class="text-link" href="{% url 'calendar' %}">Manage bills →</a></div>{% for bill in upcoming_bills %}<div class="upcoming-bill-row"><span class="bill-icon"><svg class="icon" aria-hidden="true"><use href="#i-receipt"/></svg></span><span class="upcoming-bill-main"><b>{{ bill.item.name }}</b><small>{% if bill.overdue %}Overdue · {% endif %}Due {{ bill.due_date|date:"M j" }} · {{ bill.item.account.name }}</small></span><b class="upcoming-bill-amount">{{ bill.item.account.currency }} {{ bill.item.amount|floatformat:2 }}</b></div>{% empty %}<div class="empty">No bills are scheduled in the next 30 days. Add one in Calendar &amp; bills to get reminders here.</div>{% endfor %}<div class="bill-reminder-note">Nibi can warn you before recording a purchase if it may leave one of these bills short.</div></article><article class="panel assistant-teaser"><div class="assistant-badge"><svg class="icon" aria-hidden="true"><use href="#i-bot"/></svg></div><h2>Plan before you spend</h2><p>Your scheduled bills stay visible here, so you can check what’s due before making a purchase.</p><a class="btn light full" href="{% url 'calendar' %}">View calendar &amp; bills <span>→</span></a></article></section>
-<section class="dashboard-grid lower-grid"><article class="panel"><div class="panel-head"><div><h2>Recent activity</h2><p>Your latest income and spending</p></div><a class="text-link" href="{% url 'transactions' %}">See all →</a></div><div class="transaction-list">{% for item in transactions %}<div class="transaction-row"><span class="tx-emoji"><svg class="icon" aria-hidden="true"><use href="#i-tag"/></svg></span><span class="tx-main"><b>{{ item.description }}</b><small>{{ item.category.name|default:"Uncategorized" }} · {{ item.date|date:"M j" }}</small></span><span class="tx-amount {% if item.kind == 'income' %}positive{% endif %}">{% if item.kind == 'income' %}+{% else %}−{% endif %}${{ item.amount|floatformat:2 }}<small>{{ item.account.name }}</small></span></div>{% empty %}<div class="empty">Your transactions will show here after you add the first one.</div>{% endfor %}</div></article><article class="panel"><div class="panel-head"><div><h2>Budget progress</h2><p>Current active budgets</p></div><a class="text-link" href="{% url 'budgets' %}">Manage →</a></div>{% for budget in budgets %}<div class="budget-item"><div class="budget-title"><span><svg class="icon category-mark" aria-hidden="true"><use href="#i-tag"/></svg>{{ budget.category.name }}</span><span>{{ budget.spent|money:user.profile.currency }} / {{ budget.amount|money:user.profile.currency }}</span></div><div class="progress"><i class="{% if budget.percent >= 85 %}warning{% endif %}" style="width:{{ budget.percent }}%"></i></div><div class="budget-caption">{{ budget.remaining|money:user.profile.currency }} left <span>{{ budget.percent }}%</span></div></div>{% empty %}<div class="empty">Create a budget to track a category’s progress.</div>{% endfor %}</article></section>
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Overview{% endblock %}
+{% block app_header %}
+<header class="topbar dashboard-topbar">
+  <div class="topstart">
+    <button class="mobile-menu" id="menu" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg></button>
+    <div class="dashboard-greeting">
+      <span class="dashboard-greeting-label">Good day,</span>
+      <h1 class="dashboard-username">{{ user.username }}</h1>
+      <p class="dashboard-subline">Here’s your money at a glance for {{ month }}.</p>
+    </div>
+  </div>
+  <div class="topactions"><span class="status-pill"><i></i>Private workspace</span><a class="btn" href="{% url 'transaction_add' %}"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Add transaction</a></div>
+</header>
 {% endblock %}
+{% block content %}
+<div class="dashboard-currency-note">A clear view of what’s coming in and going out.<span>All amounts in {{ user.profile.currency }}</span></div>
 
+<section class="stats-grid dashboard-stats">
+  <article class="stat-card feature-stat"><div class="stat-label">TOTAL BALANCE <span class="soft-icon"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></span></div><strong>{{ total_balance|money:user.profile.currency }}</strong><small>Across {{ accounts|length }} account{{ accounts|length|pluralize }}</small></article>
+  <article class="stat-card"><div class="stat-label">INCOME <span class="soft-icon"><svg class="icon" aria-hidden="true"><use href="#i-up"/></svg></span></div><strong>{{ income|money:user.profile.currency }}</strong><small>This month</small></article>
+  <article class="stat-card"><div class="stat-label">EXPENSES <span class="soft-icon"><svg class="icon" aria-hidden="true"><use href="#i-arrows"/></svg></span></div><strong>{{ expenses|money:user.profile.currency }}</strong><small>This month</small></article>
+  <article class="stat-card"><div class="stat-label">NET CASH FLOW <span class="soft-icon"><svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg></span></div><strong class="{% if net < 0 %}negative{% else %}positive{% endif %}">{{ net|money:user.profile.currency }}</strong><small>Income minus expenses</small></article>
+</section>
+
+<section class="dashboard-grid dashboard-first-grid">
+  <article class="panel dashboard-reminder-panel">
+    <div class="panel-head"><div><h2>Bill reminders</h2><p>Upcoming payments that may need your attention</p></div><a class="text-link" href="{% url 'calendar' %}">View calendar →</a></div>
+    {% for reminder in bill_reminders|slice:":2" %}
+      <div class="bill-alert {{ reminder.level }}"><span class="bill-alert-mark"><svg class="icon" aria-hidden="true"><use href="{% if reminder.level == 'critical' %}#i-alert{% else %}#i-clock{% endif %}"/></svg></span><span class="dashboard-reminder-copy"><strong>{{ reminder.reminder_text }} · {{ reminder.item.name }}</strong><small>{{ reminder.due_date|date:"M j" }} · {{ reminder.item.account.name }}</small></span><b class="bill-alert-amount">{{ reminder.item.amount|money:reminder.item.account.currency }}</b></div>
+    {% empty %}
+      {% for bill in upcoming_bills|slice:":2" %}
+        <div class="upcoming-bill-row"><span class="bill-icon"><svg class="icon" aria-hidden="true"><use href="#i-receipt"/></svg></span><span class="upcoming-bill-main"><b>{{ bill.item.name }}</b><small>{% if bill.overdue %}Overdue · {% else %}Due {% endif %}{{ bill.due_date|date:"M j" }} · {{ bill.item.account.name }}</small></span><b class="upcoming-bill-amount">{{ bill.item.amount|money:bill.item.account.currency }}</b></div>
+      {% empty %}<div class="empty dashboard-empty">No bills due in the next 7 days.</div>{% endfor %}
+    {% endfor %}
+  </article>
+
+  <article class="panel assistant-teaser dashboard-assistant">
+    <div class="assistant-badge"><svg class="icon" aria-hidden="true"><use href="#i-bot"/></svg></div>
+    <h2>Talk through your money</h2>
+    <p>Log a purchase or ask about your budget in everyday language.</p>
+    <div class="sample-message">“I spent {{ 180|money:user.profile.currency }} on lunch today”</div>
+    <a class="btn full" href="{% url 'assistant' %}">Open money assistant <span>→</span></a>
+    {% if not assistant_ready %}<small class="setup-hint">AI needs an API key in the server environment.</small>{% endif %}
+  </article>
+</section>
+
+<section class="dashboard-grid dashboard-second-grid">
+  <article class="panel">
+    <div class="panel-head"><div><h2>Your accounts</h2><p>Current balances</p></div><a class="text-link" href="{% url 'accounts' %}">Manage →</a></div>
+    <div class="account-list">
+      {% for account in accounts %}
+        <div class="account-row"><span class="account-icon">{% if account.kind == 'savings' %}<svg class="icon" aria-hidden="true"><use href="#i-sprout"/></svg>{% elif account.kind == 'credit' %}<svg class="icon" aria-hidden="true"><use href="#i-card"/></svg>{% elif account.kind == 'cash' %}<svg class="icon" aria-hidden="true"><use href="#i-cash"/></svg>{% elif account.kind == 'wallet' %}<svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg>{% else %}<svg class="icon" aria-hidden="true"><use href="#i-bank"/></svg>{% endif %}</span><span class="account-info"><b>{{ account.name }}</b><small>{{ account.get_kind_display }}</small></span><b class="account-balance">{{ account.current_balance|money:account.currency }}</b></div>
+      {% empty %}<div class="empty">Add an account to see balances here.</div>{% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head"><div><h2>Budget progress</h2><p>Current active budgets</p></div><a class="text-link" href="{% url 'budgets' %}">Manage →</a></div>
+    {% for budget in budgets %}
+      <div class="budget-item"><div class="budget-title"><span><svg class="icon category-mark" aria-hidden="true"><use href="#i-tag"/></svg>{{ budget.category.name }}</span><span>{{ budget.percent }}%</span></div><div class="progress"><i class="{% if budget.percent >= 85 %}warning{% endif %}" style="width:{{ budget.percent }}%"></i></div><div class="budget-caption"><span>{{ budget.spent|money:user.profile.currency }} spent</span><span>{{ budget.amount|money:user.profile.currency }} limit</span></div></div>
+    {% empty %}<div class="empty">Create a budget to track a category’s progress.</div>{% endfor %}
+  </article>
+</section>
+{% endblock %}

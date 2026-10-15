@@ -69,3 +69,43 @@ svg.icon{display:inline-block;width:18px;height:18px;flex:0 0 18px;fill:none;str
 .landing .feature-strip .icon{width:17px;height:17px}
 .landing .trust-line{display:flex;align-items:center;gap:7px}
 .chip .icon{width:15px;height:15px;color:var(--muted)}
+
+/* Dashboard spacing and hierarchy follow the approved username-first preview. */
+.layout-dashboard{grid-template-columns:236px minmax(0,1fr);background:#f8faf7;min-height:100vh}
+.layout-dashboard .sidebar{background:#fff}
+.layout-dashboard .main{max-width:1500px;padding:32px 4vw 50px}
+.dashboard-topbar{align-items:flex-start;margin-bottom:25px}
+.dashboard-greeting{display:grid;gap:1px}
+.dashboard-greeting-label{font-size:12px;font-weight:600;letter-spacing:.15px;color:#343a36}
+.dashboard-username{margin:0;color:var(--green);font-size:34px;line-height:1.16;font-weight:800;letter-spacing:-1.2px}
+.dashboard-subline{margin:7px 0 0;color:var(--muted);font-size:13px}
+.dashboard-currency-note{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 17px;color:var(--muted);font-size:13px}
+.dashboard-currency-note span{font-size:11px}
+.dashboard-stats{margin-bottom:16px}
+.dashboard-stats .stat-card{padding:18px}
+.dashboard-stats .stat-label{font-size:10px;letter-spacing:.6px}
+.dashboard-stats .stat-card strong{font-size:24px;letter-spacing:-.5px}
+.dashboard-first-grid,.dashboard-second-grid{grid-template-columns:minmax(0,1.2fr) minmax(290px,.8fr);gap:15px;margin-bottom:15px}
+.dashboard-first-grid .panel,.dashboard-second-grid .panel{min-width:0}
+.dashboard-reminder-panel .panel-head{margin-bottom:13px}
+.dashboard-reminder-panel .bill-alert{margin:12px 0;padding:12px;gap:11px;border:1px solid var(--line);background:#f5f7f4}
+.dashboard-reminder-panel .bill-alert.warning,.dashboard-reminder-panel .bill-alert.upcoming{background:#f5f7f4;border-color:var(--line)}
+.dashboard-reminder-panel .bill-alert.critical{background:var(--danger-soft);border-color:#f2c8c2}
+.dashboard-reminder-panel .bill-alert-mark{display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border-radius:9px;background:#fff;color:var(--muted)}
+.dashboard-reminder-panel .bill-alert-copy,.dashboard-reminder-copy{display:grid;gap:4px;min-width:0}
+.dashboard-reminder-panel .bill-alert-copy strong,.dashboard-reminder-copy strong{font-size:12px;color:var(--ink)}
+.dashboard-reminder-panel .bill-alert-copy small,.dashboard-reminder-copy small{font-size:10px;color:var(--muted)}
+.dashboard-reminder-panel .bill-alert.critical .bill-alert-mark,.dashboard-reminder-panel .bill-alert.critical .dashboard-reminder-copy strong,.dashboard-reminder-panel .bill-alert.critical .bill-alert-amount{color:var(--danger)}
+.dashboard-reminder-panel .bill-alert-amount{font-size:12px;white-space:nowrap}
+.dashboard-empty{padding:26px 12px}
+.dashboard-assistant{background:#edf3eb;border-color:#e1e9df;box-shadow:none;padding:18px}
+.dashboard-assistant .assistant-badge{margin:0 0 10px}
+.dashboard-assistant h2{font-size:16px;margin:0;font-weight:700}
+.dashboard-assistant p{font-size:11px;line-height:1.6;color:#536259;margin:7px 0 12px}
+.dashboard-assistant .sample-message{margin-bottom:12px}
+.dashboard-assistant .btn{align-self:flex-start;width:auto}
+.dashboard-second-grid .account-row{padding:12px 0}
+.dashboard-second-grid .account-icon{background:#f2f5f1;color:#66736a}
+.dashboard-second-grid .budget-item{margin:13px 0 15px}
+@media(max-width:900px){.layout-dashboard .main{padding:25px 22px 40px}.dashboard-first-grid,.dashboard-second-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.layout-dashboard .main{padding:24px 16px 40px}.dashboard-username{font-size:31px}.dashboard-currency-note{align-items:flex-start;flex-direction:column;gap:4px}.dashboard-first-grid,.dashboard-second-grid{grid-template-columns:1fr}}

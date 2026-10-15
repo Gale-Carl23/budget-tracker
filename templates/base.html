@@ -46,7 +46,7 @@
   <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Zm7 11 .9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14ZM5 2l.7 1.8L7.5 4.5l-1.8.7L5 7l-.7-1.8L2.5 4.5l1.8-.7L5 2Z"/></symbol>
 </svg>
 {% if user.is_authenticated %}
-<div class="layout">
+<div class="layout{% if active == 'home' %} layout-dashboard{% endif %}">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation">
     <div class="sidebar-top">
       <a class="brand" href="{% url 'dashboard' %}"><img class="brandmark" src="{% static 'finance/nibi-cat.png' %}" alt=""><span>Nibi</span></a>
@@ -79,10 +79,10 @@
   </aside>
   <button class="sidebar-backdrop" id="sidebar-backdrop" type="button" aria-label="Close navigation"></button>
   <main class="main">
-    <header class="topbar">
+    {% block app_header %}<header class="topbar">
       <div class="topstart"><button class="mobile-menu" id="menu" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg></button><div><div class="eyebrow">YOUR MONEY, MADE CLEARER</div><div class="topname">{% block heading %}Overview{% endblock %}</div></div></div>
       <div class="topactions"><span class="status-pill"><i></i>Private workspace</span><a class="btn" href="{% url 'transaction_add' %}"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Add transaction</a></div>
-    </header>
+    </header>{% endblock %}
     {% if messages %}<div class="messages">{% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
     {% block content %}{% endblock %}
   </main>
