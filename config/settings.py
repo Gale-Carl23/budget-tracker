@@ -112,6 +112,12 @@ if not DEBUG and (not EMAIL_HOST or not EMAIL_HOST_USER or not EMAIL_HOST_PASSWO
     raise RuntimeError("Configure authenticated SMTP settings before production use so users can reset passwords.")
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = max(300, int(os.environ.get("SESSION_COOKIE_AGE", "3600")))
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+DATA_UPLOAD_MAX_MEMORY_SIZE = max(65536, int(os.environ.get("DATA_UPLOAD_MAX_MEMORY_SIZE", str(2_621_440))))
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 LOGGING = {

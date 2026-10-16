@@ -61,6 +61,8 @@ Required provider settings:
 
 Nibi enables HTTPS redirects, secure session and CSRF cookies, and HSTS in production. The default HSTS period is one hour; increase it to one year only after confirming HTTPS works correctly on the final domain. Do not enable HSTS subdomains or preload unless every affected domain is ready for HTTPS. Set `DJANGO_SECURE_PROXY_SSL_HEADER` only when the hosting provider’s trusted proxy sets and protects the configured header.
 
+Sessions expire after one hour of inactivity, are refreshed as the user makes requests, and end when the browser closes. Change the duration with `SESSION_COOKIE_AGE` (seconds). Session and CSRF cookies are HTTP-only where applicable and use `SameSite=Lax`; Django's CSRF middleware remains enabled, and all data-changing browser forms include CSRF tokens and submit with POST. User-owned objects are also scoped in form querysets and checked server-side, so changing a submitted account or category ID cannot select another user's data. Requests with form bodies larger than 2.5 MiB are rejected by default; adjust `DATA_UPLOAD_MAX_MEMORY_SIZE` only if the app later needs larger submissions.
+
 AI usage is capped per user at 10 requests per minute and 100 per day by default; response size is capped at 700 output tokens and provider requests have a 30-second timeout. These limits can be changed with `AI_REQUESTS_PER_MINUTE`, `AI_REQUESTS_PER_DAY`, and `OPENAI_MAX_OUTPUT_TOKENS`. Configure an additional provider-side project budget/alert for the API key.
 
 ## Release steps

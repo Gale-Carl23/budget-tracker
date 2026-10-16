@@ -13,7 +13,7 @@ from django.db.models import OuterRef, Q, Subquery, Sum
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 from .forms import AccountForm, BudgetForm, DebtForm, DebtPaymentForm, GoalForm, ProfileForm, RecurringItemForm, SignupForm, TransactionForm, ContributionForm
 from .models import Account, AssistantRequestLog, AuditEntry, Budget, Category, ChatMessage, Conversation, DebtPayment, GoalContribution, RecurringItem, SavingsGoal, Transaction, AssistantPreference
 
@@ -25,6 +25,7 @@ def landing(request):
 def privacy(request):
     return render(request, "finance/privacy.html")
 
+@require_http_methods(["GET", "POST"])
 def signup(request):
     form = SignupForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
