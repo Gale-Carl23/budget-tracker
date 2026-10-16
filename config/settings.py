@@ -67,7 +67,9 @@ if DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql
         "ENGINE": "django.db.backends.postgresql",
         "NAME": unquote(db_url.path.lstrip("/")), "USER": unquote(db_url.username or ""), "PASSWORD": unquote(db_url.password or ""),
         "HOST": db_url.hostname or "", "PORT": db_url.port or 5432,
-        "CONN_MAX_AGE": 60, "OPTIONS": {"sslmode": "require"} if not DEBUG else {},
+        "CONN_MAX_AGE": max(0, int(os.environ.get("DB_CONN_MAX_AGE", "60"))),
+        "CONN_HEALTH_CHECKS": True,
+        "OPTIONS": {"sslmode": "require"} if not DEBUG else {},
     }}
 elif not DEBUG:
     raise RuntimeError("Production requires PostgreSQL. SQLite is supported for local development only.")

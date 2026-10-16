@@ -3,6 +3,7 @@ from django.urls import include, path
 from finance import views
 
 urlpatterns = [
+    path("healthz/", views.healthz, name="healthz"),
     path("admin/", admin.site.urls),
     path("", views.landing, name="landing"),
     path("accounts/", include("django.contrib.auth.urls")),

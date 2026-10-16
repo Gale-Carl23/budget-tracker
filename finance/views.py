@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.db import IntegrityError, transaction as db_transaction
-from django.db.models import Q, Sum
+from django.db.models import OuterRef, Q, Subquery, Sum
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -50,11 +50,25 @@ def signup(request):
     return render(request, "registration/signup.html", {"form": form})
 
 def seed_defaults(user):
-    Account.objects.get_or_create(user=user, name="Everyday checking", defaults={"kind": "checking", "currency": getattr(getattr(user, "profile", None), "currency", "USD")})
-    Account.objects.get_or_create(user=user, name="Savings", defaults={"kind": "savings", "currency": getattr(getattr(user, "profile", None), "currency", "USD")})
+    currency = getattr(getattr(user, "profile", None), "currency", "USD")
+    account_names = ["Everyday checking", "Savings"]
+    existing_accounts = set(Account.objects.filter(user=user, name__in=account_names).values_list("name", flat=True))
+    Account.objects.bulk_create([
+        Account(user=user, name="Everyday checking", kind="checking", currency=currency),
+        Account(user=user, name="Savings", kind="savings", currency=currency),
+    ] if not existing_accounts else [
+        Account(user=user, name=name, kind=kind, currency=currency)
+        for name, kind in (("Everyday checking", "checking"), ("Savings", "savings"))
+        if name not in existing_accounts
+    ], ignore_conflicts=True)
     seed = [("Groceries", "expense", "🥑"), ("Dining out", "expense", "🍜"), ("Transport", "expense", "🚇"), ("Housing", "expense", "🏠"), ("Shopping", "expense", "🛍️"), ("Utilities", "expense", "💡"), ("Subscriptions", "expense", "🎧"), ("Salary", "income", "💼"), ("Side income", "income", "✨")]
-    for name, kind, icon in seed:
-        Category.objects.get_or_create(user=user, name=name, kind=kind, defaults={"icon": icon})
+    existing_categories = set(Category.objects.filter(
+        user=user, name__in=[name for name, _, _ in seed],
+    ).values_list("name", "kind"))
+    Category.objects.bulk_create([
+        Category(user=user, name=name, kind=kind, icon=icon)
+        for name, kind, icon in seed if (name, kind) not in existing_categories
+    ], ignore_conflicts=True)
 
 def audit(user, action, entity, entity_id, summary, before=None, after=None, source="user", confirmed=True):
     AuditEntry.objects.create(user=user, action=action, entity=entity, entity_id=str(entity_id or ""), summary=summary, before=before or {}, after=after or {}, source=source, confirmed=confirmed)
@@ -62,15 +76,78 @@ def audit(user, action, entity, entity_id, summary, before=None, after=None, sou
 def tx_snapshot(obj):
     return {"description": obj.description, "kind": obj.kind, "amount": str(obj.amount), "date": obj.date.isoformat(), "account": obj.account.name, "destination": obj.destination.name if obj.destination else "", "category": obj.category.name if obj.category else "", "currency": obj.currency, "payee": obj.payee, "notes": obj.notes, "tags": obj.tags}
 
+
+def attach_account_balances(accounts, user):
+    """Load balances for a group of accounts with two grouped queries, not per account."""
+    accounts = list(accounts)
+    if not accounts:
+        return accounts
+    account_ids = [account.pk for account in accounts]
+    outgoing = {
+        row["account_id"]: row
+        for row in Transaction.objects.filter(user=user, account_id__in=account_ids)
+        .order_by().values("account_id")
+        .annotate(
+            positive=Sum("amount", filter=Q(kind__in=("income", "refund"))),
+            negative=Sum("amount", filter=Q(kind__in=("expense", "adjustment", "transfer"))),
+        )
+    }
+    incoming = dict(
+        Transaction.objects.filter(user=user, destination_id__in=account_ids, kind="transfer")
+        .order_by().values("destination_id")
+        .annotate(total=Sum("amount"))
+        .values_list("destination_id", "total")
+    )
+    for account in accounts:
+        amounts = outgoing.get(account.pk, {})
+        account.balance_display = (
+            account.opening_balance
+            + (amounts.get("positive") or Decimal("0.00"))
+            - (amounts.get("negative") or Decimal("0.00"))
+            + (incoming.get(account.pk) or Decimal("0.00"))
+        )
+    return accounts
+
+
+def attach_budget_spending(budgets, currency):
+    """Annotate each budget's spend in one correlated SQL query."""
+    budgets = list(budgets)
+    spending = Transaction.objects.filter(
+        user_id=OuterRef("user_id"), category_id=OuterRef("category_id"),
+        kind="expense", currency=currency,
+        date__range=(OuterRef("starts_on"), OuterRef("ends_on")),
+    ).order_by().values("category_id").annotate(total=Sum("amount")).values("total")[:1]
+    annotated = {
+        item.pk: item
+        for item in Budget.objects.filter(pk__in=[row.pk for row in budgets])
+        .select_related("category").annotate(spent_total=Subquery(spending))
+    }
+    for budget in budgets:
+        spent = annotated[budget.pk].spent_total or Decimal("0.00")
+        budget.spent_display = spent
+        budget.percent_display = min(100, int(spent * 100 / budget.amount)) if budget.amount else 0
+        budget.remaining_display = max(Decimal("0.00"), budget.amount - spent)
+    return budgets
+
+
+def healthz(request):
+    """Lightweight process health endpoint for the hosting platform."""
+    return HttpResponse("ok", content_type="text/plain")
+
 @login_required
 def dashboard(request):
     seed_defaults(request.user)
     today = timezone.localdate()
     currency = getattr(getattr(request.user, "profile", None), "currency", "USD")
-    month_tx = Transaction.objects.filter(user=request.user, currency=currency, date__year=today.year, date__month=today.month).select_related("category", "account")
+    month_start = today.replace(day=1)
+    month_end = _add_months(month_start, 1)
+    month_tx = Transaction.objects.filter(user=request.user, currency=currency, date__gte=month_start, date__lt=month_end).select_related("category", "account")
     income = month_tx.filter(kind="income").aggregate(v=Sum("amount"))["v"] or Decimal("0")
     expenses = month_tx.filter(kind="expense").aggregate(v=Sum("amount"))["v"] or Decimal("0")
-    budgets = Budget.objects.filter(user=request.user, starts_on__lte=today, ends_on__gte=today).select_related("category")
+    budgets = attach_budget_spending(
+        Budget.objects.filter(user=request.user, starts_on__lte=today, ends_on__gte=today).select_related("category"),
+        currency,
+    )
     upcoming = RecurringItem.objects.filter(user=request.user, is_active=True, next_date__gte=today).order_by("next_date")[:5]
     forecast_end = today + timedelta(days=30)
     upcoming_bills = []
@@ -105,8 +182,8 @@ def dashboard(request):
     bill_reminders = bill_reminders[:5]
     upcoming_bills = upcoming_bills[:6]
     goals = SavingsGoal.objects.filter(user=request.user)[:3]
-    user_accounts = list(Account.objects.filter(user=request.user, is_archived=False))
-    total_balance = sum((a.current_balance for a in user_accounts if a.currency == currency), Decimal("0.00"))
+    user_accounts = attach_account_balances(Account.objects.filter(user=request.user, is_archived=False), request.user)
+    total_balance = sum((a.balance_display for a in user_accounts if a.currency == currency), Decimal("0.00"))
     context = {"income": income, "expenses": expenses, "net": income-expenses, "total_balance": total_balance, "accounts": user_accounts, "transactions": month_tx[:7], "budgets": budgets, "upcoming": upcoming, "upcoming_bills": upcoming_bills, "bill_reminders": bill_reminders, "goals": goals, "month": today.strftime("%B %Y"), "assistant_ready": bool(__import__("os").environ.get("OPENAI_API_KEY"))}
     return render(request, "finance/dashboard.html", context)
 
@@ -179,7 +256,8 @@ def transaction_delete(request, pk):
 
 @login_required
 def accounts(request):
-    return render(request, "finance/accounts.html", {"accounts": Account.objects.filter(user=request.user).order_by("is_archived", "name")})
+    accounts = attach_account_balances(Account.objects.filter(user=request.user).order_by("is_archived", "name"), request.user)
+    return render(request, "finance/accounts.html", {"accounts": accounts})
 
 @login_required
 def account_add(request):
@@ -222,7 +300,9 @@ def account_archive(request, pk):
 
 @login_required
 def budgets(request):
-    return render(request, "finance/budgets.html", {"budgets": Budget.objects.filter(user=request.user).select_related("category")})
+    currency = getattr(getattr(request.user, "profile", None), "currency", "USD")
+    budgets = attach_budget_spending(Budget.objects.filter(user=request.user).select_related("category"), currency)
+    return render(request, "finance/budgets.html", {"budgets": budgets})
 
 @login_required
 def budget_add(request):

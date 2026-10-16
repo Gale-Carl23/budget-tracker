@@ -10,7 +10,7 @@
     <div class="account-card-head"><span class="account-icon">{% if account.kind == 'savings' %}<svg class="icon" aria-hidden="true"><use href="#i-sprout"/></svg>{% elif account.kind == 'credit' %}<svg class="icon" aria-hidden="true"><use href="#i-card"/></svg>{% elif account.kind == 'cash' %}<svg class="icon" aria-hidden="true"><use href="#i-cash"/></svg>{% elif account.kind == 'wallet' %}<svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg>{% else %}<svg class="icon" aria-hidden="true"><use href="#i-bank"/></svg>{% endif %}</span>{% if account.is_archived %}<span class="account-state">Archived</span>{% endif %}</div>
     <div class="eyebrow">{{ account.get_kind_display|upper }}</div>
     <h2>{{ account.name }}</h2>
-    <strong>{{ account.current_balance|money:account.currency }}</strong>
+    <strong>{{ account.balance_display|money:account.currency }}</strong>
     <small>Opening balance · {{ account.opening_balance|money:account.currency }}</small>
     {% if account.is_archived %}<small class="account-archived-note">Archived accounts are excluded from new transactions.</small>{% endif %}
     <div class="account-actions">

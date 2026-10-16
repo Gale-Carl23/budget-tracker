@@ -84,7 +84,12 @@ class Transaction(models.Model):
 
     class Meta:
         ordering = ["-date", "-created_at"]
-        indexes = [models.Index(fields=["user", "date"], name="txn_user_date_ix"), models.Index(fields=["user", "kind", "date"], name="txn_user_kind_date_ix")]
+        indexes = [
+            models.Index(fields=["user", "date"], name="txn_user_date_ix"),
+            models.Index(fields=["user", "kind", "date"], name="txn_user_kind_date_ix"),
+            models.Index(fields=["user", "category", "currency", "kind", "date"], name="txn_user_cat_cur_kind_date"),
+            models.Index(fields=["user", "account"], name="txn_user_account_ix"),
+        ]
 
     def clean(self):
         from django.core.exceptions import ValidationError
