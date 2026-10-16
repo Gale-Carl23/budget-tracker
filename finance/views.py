@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core import signing
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction as db_transaction
 from django.db.models import OuterRef, Q, Subquery, Sum
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
@@ -191,11 +192,46 @@ def dashboard(request):
 @login_required
 def transactions(request):
     qs = Transaction.objects.filter(user=request.user).select_related("category", "account", "destination")
-    q = request.GET.get("q", "").strip()
+    q = request.GET.get("q", "").strip()[:100]
     kind = request.GET.get("kind", "")
+    account_id = request.GET.get("account", "")
+    category_id = request.GET.get("category", "")
+    start_text = request.GET.get("from", "")
+    end_text = request.GET.get("to", "")
     if q: qs = qs.filter(description__icontains=q)
     if kind in {"income", "expense", "transfer", "refund", "adjustment"}: qs = qs.filter(kind=kind)
-    return render(request, "finance/transactions.html", {"transactions": qs[:250], "q": q, "kind": kind})
+    accounts = Account.objects.filter(user=request.user).order_by("name")
+    categories = Category.objects.filter(user=request.user).order_by("name", "kind")
+    if account_id.isdigit():
+        qs = qs.filter(account_id=account_id, account__user=request.user)
+    else:
+        account_id = ""
+    if category_id.isdigit():
+        qs = qs.filter(category_id=category_id, category__user=request.user)
+    else:
+        category_id = ""
+    try:
+        start_date = date.fromisoformat(start_text) if start_text else None
+        end_date = date.fromisoformat(end_text) if end_text else None
+        if start_date and end_date and end_date < start_date:
+            raise ValueError
+    except ValueError:
+        start_date = end_date = None
+        start_text = end_text = ""
+        messages.error(request, "Choose a valid transaction date range.")
+    if start_date:
+        qs = qs.filter(date__gte=start_date)
+    if end_date:
+        qs = qs.filter(date__lte=end_date)
+    page_obj = Paginator(qs, 50).get_page(request.GET.get("page"))
+    params = request.GET.copy()
+    params.pop("page", None)
+    return render(request, "finance/transactions.html", {
+        "transactions": page_obj.object_list, "page_obj": page_obj, "q": q, "kind": kind,
+        "accounts": accounts, "categories": categories, "account_filter": account_id,
+        "category_filter": category_id, "start_filter": start_text, "end_filter": end_text,
+        "filter_query": params.urlencode(),
+    })
 
 @login_required
 def reports(request):

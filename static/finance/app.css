@@ -109,3 +109,9 @@ svg.icon{display:inline-block;width:18px;height:18px;flex:0 0 18px;fill:none;str
 .dashboard-second-grid .budget-item{margin:13px 0 15px}
 @media(max-width:900px){.layout-dashboard .main{padding:25px 22px 40px}.dashboard-first-grid,.dashboard-second-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.layout-dashboard .main{padding:24px 16px 40px}.dashboard-username{font-size:31px}.dashboard-currency-note{align-items:flex-start;flex-direction:column;gap:4px}.dashboard-first-grid,.dashboard-second-grid{grid-template-columns:1fr}}
+.transaction-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;gap:12px}
+.transaction-filters label{display:grid;gap:6px;font-size:11px;font-weight:600;color:var(--muted)}
+.transaction-filters input,.transaction-filters select{width:100%;min-width:0}
+.transaction-count{font-size:11px;margin:14px 0 4px}
+.transaction-pagination{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding-top:18px;color:var(--muted);font-size:12px}
+.transaction-pagination .btn:last-child{justify-self:end}
