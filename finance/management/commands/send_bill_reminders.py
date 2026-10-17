@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 from django.core.mail import send_mail
 from django.utils import timezone
 
-from finance.models import BillNotification, RecurringItem
+from finance.models import BillNotification, LoginThrottle, RecurringItem
 from finance.recurrence import recurring_occurrences
 
 
@@ -69,4 +69,5 @@ class Command(BaseCommand):
                 notification.email_sent = True
                 notification.save(update_fields=["email_sent", "email_attempts"])
                 sent_count += 1
+            LoginThrottle.objects.filter(updated_at__lt=timezone.now() - timedelta(days=2)).delete()
         self.stdout.write(self.style.SUCCESS(f"Created {created_count} reminder(s); sent {sent_count} email(s)."))

@@ -1,22 +1,29 @@
 import csv
+import hashlib
+import hmac
+import ipaddress
 import json
 import calendar as month_calendar
 from datetime import date, timedelta
 from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core import signing
+from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction as db_transaction
 from django.db.models import OuterRef, Q, Subquery, Sum
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 from .forms import AccountForm, BudgetForm, DebtForm, DebtPaymentForm, GoalForm, ProfileForm, RecurringItemForm, SignupForm, TransactionForm, ContributionForm
-from .models import Account, AssistantRequestLog, AuditEntry, BillNotification, Budget, Category, ChatMessage, Conversation, DebtPayment, GoalContribution, RecurringItem, SavingsGoal, Transaction, AssistantPreference
+from .models import Account, AssistantRequestLog, AuditEntry, BillNotification, Budget, Category, ChatMessage, Conversation, DebtPayment, GoalContribution, LoginThrottle, RecurringItem, SavingsGoal, Transaction, AssistantPreference
 from .recurrence import add_months as _add_months, next_recurring_date as _next_recurring_date, recurring_occurrences as _recurring_occurrences
 
 def landing(request):
@@ -40,17 +47,103 @@ def signup(request):
                     username=form.cleaned_data["username"],
                     email=form.cleaned_data["email"],
                     password=form.cleaned_data["password1"],
+                    is_active=False,
                 )
                 user.profile.currency = form.cleaned_data["currency"]
-                user.profile.save(update_fields=["currency"])
+                user.profile.email_verified = False
+                user.profile.save(update_fields=["currency", "email_verified"])
                 seed_defaults(user)
+                token = signing.dumps({"user": user.pk, "email": user.email}, salt="nibi-email-verification", compress=True)
+                verify_url = request.build_absolute_uri(reverse("verify_email", args=[token]))
+                send_mail(
+                    "Verify your email for Nibi",
+                    f"Hello {user.get_username()},\n\nVerify your email address to activate your Nibi account:\n\n{verify_url}\n\nThis link expires in 24 hours. If you did not create this account, you can ignore this message.",
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    fail_silently=False,
+                )
         except IntegrityError:
             form.add_error("username", "That username is already in use. Try signing in or choose another.")
             return render(request, "registration/signup.html", {"form": form})
-        login(request, user)
-        messages.success(request, "Welcome! Your personal money space is ready.")
-        return redirect("dashboard")
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).error("Signup verification email failed (%s)", type(exc).__name__)
+            form.add_error(None, "We could not send the verification email. Check the address and try again later.")
+            return render(request, "registration/signup.html", {"form": form})
+        messages.success(request, "Check your email for a verification link. It expires in 24 hours.")
+        return redirect("login")
     return render(request, "registration/signup.html", {"form": form})
+
+
+def verify_email(request, token):
+    if request.method != "GET":
+        return HttpResponseBadRequest("Invalid verification request.")
+    try:
+        payload = signing.loads(token, salt="nibi-email-verification", max_age=86400)
+        user = get_user_model().objects.get(pk=payload["user"], email=payload["email"])
+    except (signing.BadSignature, KeyError, TypeError, ValueError, get_user_model().DoesNotExist):
+        messages.error(request, "That verification link is invalid or has expired. Sign up again to request a new link.")
+        return redirect("signup")
+    if not user.is_active:
+        with db_transaction.atomic():
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+            user.profile.email_verified = True
+            user.profile.save(update_fields=["email_verified"])
+    messages.success(request, "Your email is verified. You can now sign in to Nibi.")
+    return redirect("login")
+
+
+def _login_rate_key(request, username):
+    candidate = request.META.get("HTTP_CF_CONNECTING_IP") or request.META.get("REMOTE_ADDR", "")
+    try:
+        client_ip = str(ipaddress.ip_address(candidate.strip()))
+    except (ValueError, AttributeError):
+        client_ip = "unknown"
+    material = f"{username.strip().casefold()}|{client_ip}".encode("utf-8")
+    return hmac.new(settings.SECRET_KEY.encode("utf-8"), material, hashlib.sha256).hexdigest()
+
+
+def _login_locked_until(key_hash, now):
+    record = LoginThrottle.objects.filter(key_hash=key_hash).only("locked_until").first()
+    return record.locked_until if record and record.locked_until and record.locked_until > now else None
+
+
+def _record_login_failure(key_hash, now):
+    window = timedelta(seconds=settings.LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+    with db_transaction.atomic():
+        record, _ = LoginThrottle.objects.select_for_update().get_or_create(
+            key_hash=key_hash, defaults={"window_started": now},
+        )
+        if record.window_started < now - window or (record.locked_until and record.locked_until <= now):
+            record.window_started = now
+            record.failures = 0
+            record.locked_until = None
+        record.failures += 1
+        if record.failures >= settings.LOGIN_RATE_LIMIT_ATTEMPTS:
+            record.locked_until = now + window
+        record.save(update_fields=["window_started", "failures", "locked_until", "updated_at"])
+
+
+def login_view(request):
+    next_url = request.POST.get("next", "") if request.method == "POST" else request.GET.get("next", "")
+    form = AuthenticationForm(request=request, data=request.POST or None)
+    if request.method == "POST":
+        username = request.POST.get("username", "")[:150]
+        key_hash = _login_rate_key(request, username)
+        now = timezone.now()
+        if _login_locked_until(key_hash, now):
+            form.add_error(None, "Too many unsuccessful sign-in attempts. Wait 15 minutes before trying again.")
+        elif form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            LoginThrottle.objects.filter(key_hash=key_hash).delete()
+            if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+                next_url = reverse("dashboard")
+            return redirect(next_url)
+        else:
+            _record_login_failure(key_hash, now)
+    return render(request, "registration/login.html", {"form": form, "next": next_url})
 
 def seed_defaults(user):
     currency = getattr(getattr(user, "profile", None), "currency", "USD")

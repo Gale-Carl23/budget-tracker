@@ -31,6 +31,8 @@ if render_external_url and render_external_url not in CSRF_TRUSTED_ORIGINS:
 AI_REQUESTS_PER_MINUTE = max(1, int(os.environ.get("AI_REQUESTS_PER_MINUTE", "10")))
 AI_REQUESTS_PER_DAY = max(1, int(os.environ.get("AI_REQUESTS_PER_DAY", "100")))
 OPENAI_MAX_OUTPUT_TOKENS = max(100, int(os.environ.get("OPENAI_MAX_OUTPUT_TOKENS", "700")))
+LOGIN_RATE_LIMIT_ATTEMPTS = max(3, int(os.environ.get("LOGIN_RATE_LIMIT_ATTEMPTS", "8")))
+LOGIN_RATE_LIMIT_WINDOW_SECONDS = max(60, int(os.environ.get("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "900")))
 
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
@@ -78,7 +80,7 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]

@@ -10,6 +10,7 @@ class Profile(models.Model):
     currency = models.CharField(max_length=3, default="USD")
     locale = models.CharField(max_length=20, default="en-US")
     onboarding_complete = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self): return self.user.get_username()
@@ -186,6 +187,18 @@ class BillNotification(models.Model):
     class Meta:
         ordering = ["read_at", "due_date", "-created_at"]
         constraints = [models.UniqueConstraint(fields=["recurring_item", "due_date", "days_before"], name="uniq_bill_notice_occurrence")]
+
+
+class LoginThrottle(models.Model):
+    """Hashed username/IP buckets shared by every web instance."""
+    key_hash = models.CharField(max_length=64, unique=True)
+    window_started = models.DateTimeField()
+    failures = models.PositiveSmallIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["updated_at"], name="login_throttle_updated_ix")]
 
 
 class Debt(models.Model):

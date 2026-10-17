@@ -60,6 +60,9 @@ Required provider settings:
 - `DATABASE_URL`: a managed PostgreSQL connection URL. Database passwords must be URL-encoded when they contain reserved URL characters.
 - `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, and `DEFAULT_FROM_EMAIL`: a transactional SMTP service for password resets.
 - `OPENAI_API_KEY`: optional; add it only as a server-side secret to enable live AI. It is deliberately blank in the production example.
+- `LOGIN_RATE_LIMIT_ATTEMPTS` and `LOGIN_RATE_LIMIT_WINDOW_SECONDS`: optional; defaults are 8 failed attempts within 15 minutes for a hashed username/client-IP pair. The shared throttle records contain no raw username or IP address.
+
+New signups receive a signed email-verification link that expires after 24 hours. SMTP must be working for signup verification, password resets, and bill reminder emails. Existing accounts are treated as verified during this upgrade. Passwords must be at least 12 characters for new signups and password changes.
 
 Nibi enables HTTPS redirects, secure session and CSRF cookies, and HSTS in production. The default HSTS period is one hour; increase it to one year only after confirming HTTPS works correctly on the final domain. Do not enable HSTS subdomains or preload unless every affected domain is ready for HTTPS. Set `DJANGO_SECURE_PROXY_SSL_HEADER` only when the hosting provider’s trusted proxy sets and protects the configured header.
 
