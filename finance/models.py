@@ -171,6 +171,23 @@ class RecurringItem(models.Model):
     is_active = models.BooleanField(default=True)
 
 
+class BillNotification(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="bill_notifications")
+    recurring_item = models.ForeignKey(RecurringItem, on_delete=models.CASCADE, related_name="notifications")
+    due_date = models.DateField()
+    days_before = models.PositiveSmallIntegerField(choices=[(7, "7 days"), (3, "3 days"), (1, "1 day")])
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=3, default="USD")
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    email_sent = models.BooleanField(default=False)
+    email_attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["read_at", "due_date", "-created_at"]
+        constraints = [models.UniqueConstraint(fields=["recurring_item", "due_date", "days_before"], name="uniq_bill_notice_occurrence")]
+
+
 class Debt(models.Model):
     TYPES = [("owed", "I owe"), ("receivable", "Owed to me")]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="debts")

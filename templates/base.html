@@ -57,6 +57,7 @@
       <nav class="nav">
         <a class="{% if active == 'home' %}active{% endif %}" href="{% url 'dashboard' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>Overview</a>
         <a class="{% if active == 'transactions' %}active{% endif %}" href="{% url 'transactions' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-arrows"/></svg></span>Transactions</a>
+        <a class="{% if active == 'notifications' %}active{% endif %}" href="{% url 'notifications' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg></span>Bill reminders{% if unread_notifications %}<b class="nav-count">{{ unread_notifications }}</b>{% endif %}</a>
         <a class="{% if active == 'reports' %}active{% endif %}" href="{% url 'reports' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg></span>Reports</a>
         <a class="{% if active == 'budgets' %}active{% endif %}" href="{% url 'budgets' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg></span>Budgets</a>
         <a class="{% if active == 'calendar' %}active{% endif %}" href="{% url 'calendar' %}"><span><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></span>Calendar &amp; bills</a>

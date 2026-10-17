@@ -16,7 +16,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 from .forms import AccountForm, BudgetForm, DebtForm, DebtPaymentForm, GoalForm, ProfileForm, RecurringItemForm, SignupForm, TransactionForm, ContributionForm
-from .models import Account, AssistantRequestLog, AuditEntry, Budget, Category, ChatMessage, Conversation, DebtPayment, GoalContribution, RecurringItem, SavingsGoal, Transaction, AssistantPreference
+from .models import Account, AssistantRequestLog, AuditEntry, BillNotification, Budget, Category, ChatMessage, Conversation, DebtPayment, GoalContribution, RecurringItem, SavingsGoal, Transaction, AssistantPreference
+from .recurrence import add_months as _add_months, next_recurring_date as _next_recurring_date, recurring_occurrences as _recurring_occurrences
 
 def landing(request):
     if request.user.is_authenticated:
@@ -135,6 +136,22 @@ def attach_budget_spending(budgets, currency):
 def healthz(request):
     """Lightweight process health endpoint for the hosting platform."""
     return HttpResponse("ok", content_type="text/plain")
+
+
+@login_required
+def notifications(request):
+    items = BillNotification.objects.filter(user=request.user).select_related("recurring_item", "recurring_item__account")
+    return render(request, "finance/notifications.html", {"notifications": items[:100]})
+
+
+@login_required
+@require_POST
+def notification_read(request, pk):
+    item = get_object_or_404(BillNotification, pk=pk, user=request.user)
+    if item.read_at is None:
+        item.read_at = timezone.now()
+        item.save(update_fields=["read_at"])
+    return redirect("notifications")
 
 @login_required
 def dashboard(request):
@@ -400,56 +417,6 @@ def goal_contribute(request, pk):
     else:
         messages.error(request, "Enter a valid contribution amount and date.")
     return redirect("goals")
-
-def _add_months(anchor, count):
-    month_index = anchor.year * 12 + anchor.month - 1 + count
-    year, month_zero = divmod(month_index, 12)
-    month = month_zero + 1
-    return date(year, month, min(anchor.day, month_calendar.monthrange(year, month)[1]))
-
-def _add_years(anchor, count):
-    year = anchor.year + count
-    return date(year, anchor.month, min(anchor.day, month_calendar.monthrange(year, anchor.month)[1]))
-
-def _recurring_occurrences(item, start, end):
-    anchor = item.next_date
-    end = min(end, item.end_date) if item.end_date else end
-    if anchor > end:
-        return []
-    dates = []
-    if item.frequency == "weekly":
-        jumps = max(0, (start - anchor).days // 7)
-        current = anchor + timedelta(weeks=jumps)
-        if current < start:
-            current += timedelta(weeks=1)
-        while current <= end:
-            dates.append(current)
-            current += timedelta(weeks=1)
-    elif item.frequency == "monthly":
-        jumps = max(0, (start.year - anchor.year) * 12 + start.month - anchor.month)
-        current = _add_months(anchor, jumps)
-        if current < start:
-            jumps += 1
-            current = _add_months(anchor, jumps)
-        while current <= end:
-            dates.append(current)
-            jumps += 1
-            current = _add_months(anchor, jumps)
-    else:
-        jumps = max(0, start.year - anchor.year)
-        current = _add_years(anchor, jumps)
-        if current < start:
-            current = _add_years(anchor, jumps + 1)
-        if current <= end:
-            dates.append(current)
-    return dates
-
-def _next_recurring_date(current, frequency):
-    if frequency == "weekly":
-        return current + timedelta(weeks=1)
-    if frequency == "monthly":
-        return _add_months(current, 1)
-    return _add_years(current, 1)
 
 def _bill_shortfall_warning(user, account, planned_spend, as_of=None):
     """Return a warning when a proposed purchase would leave a scheduled bill short."""

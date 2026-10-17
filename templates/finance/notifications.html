@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Bill reminders{% endblock %}
+{% block heading %}Bill reminders{% endblock %}
+{% block content %}
+<div class="page-intro"><p>Get a heads-up before scheduled bills are due.</p><a class="btn light" href="{% url 'calendar' %}"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>View calendar</a></div>
+<section class="panel notification-list">
+  {% for notice in notifications %}
+    <article class="notification-card {% if notice.read_at %}is-read{% endif %}">
+      <span class="notification-icon"><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg></span>
+      <div class="notification-copy"><h2>{{ notice.recurring_item.name }} · due {{ notice.due_date|date:"M j, Y" }}</h2><p>{{ notice.amount|money:notice.currency }} from {{ notice.recurring_item.account.name }} is due in {{ notice.days_before }} day{% if notice.days_before != 1 %}s{% endif %}. This is a reminder, not a payment.</p><small>Reminder created {{ notice.created_at|date:"M j, Y · g:i A" }}</small></div>
+      {% if not notice.read_at %}<form method="post" action="{% url 'notification_read' notice.pk %}">{% csrf_token %}<button class="btn light" type="submit">Mark read</button></form>{% else %}<span class="notification-read">Read</span>{% endif %}
+    </article>
+  {% empty %}<div class="empty">No bill reminders yet. Nibi will alert you 7, 3, and 1 day before an active scheduled bill is due.</div>{% endfor %}
+</section>
+{% endblock %}
