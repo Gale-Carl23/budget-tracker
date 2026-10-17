@@ -46,14 +46,14 @@ jobs:
           test -n "$AWS_DEFAULT_REGION"
           test -n "$BACKUP_BUCKET"
       - name: Dump PostgreSQL database
-        run: pg_dump --format=custom --no-owner --no-acl "$DATABASE_URL" --file=/tmp/nibi.dump
+        run: PGSSLMODE=require pg_dump --format=custom --no-owner --no-acl "$DATABASE_URL" --file=/tmp/nibi.dump
       - name: Upload encrypted backup to private S3 bucket
         run: |
           backup_name="nibi-$(date -u +%Y%m%dT%H%M%SZ).dump"
           aws s3 cp /tmp/nibi.dump "s3://${BACKUP_BUCKET}/nibi/${backup_name}" --sse AES256 --only-show-errors
       - name: Restore dump into a temporary PostgreSQL service
-        run: pg_restore --exit-on-error --no-owner --no-acl --host=restore-db --username=postgres --dbname=nibi_restore_check /tmp/nibi.dump
+        run: PGSSLMODE=disable pg_restore --exit-on-error --no-owner --no-acl --host=restore-db --username=postgres --dbname=nibi_restore_check /tmp/nibi.dump
       - name: Confirm restored application tables
         run: |
-          psql --host=restore-db --username=postgres --dbname=nibi_restore_check --set=ON_ERROR_STOP=1 \
+          PGSSLMODE=disable psql --host=restore-db --username=postgres --dbname=nibi_restore_check --set=ON_ERROR_STOP=1 \
             --command="SELECT COUNT(*) AS restored_users FROM auth_user; SELECT COUNT(*) AS restored_transactions FROM finance_transaction;"
