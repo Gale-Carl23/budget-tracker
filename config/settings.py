@@ -37,13 +37,14 @@ LOGIN_RATE_LIMIT_WINDOW_SECONDS = max(60, int(os.environ.get("LOGIN_RATE_LIMIT_W
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
     "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
-    "finance.apps.FinanceConfig",
+    "finance.apps.FinanceConfig", "django_mfa",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware", "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware", "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware", "django.contrib.messages.middleware.MessageMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware", "django_mfa.middleware.MfaMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 ROOT_URLCONF = "config.urls"
@@ -102,6 +103,9 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
 PASSWORD_RESET_TIMEOUT = 3600
+MFA_FACTORS = ["totp", "recovery_codes"]
+MFA_SECRET_ENCRYPTION_KEYS = [SECRET_KEY]
+MFA_EXEMPT_PATHS = ["/accounts/logout/"]
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if os.environ.get("EMAIL_HOST", "").strip() else "django.core.mail.backends.console.EmailBackend"
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "").strip()
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))

@@ -2,6 +2,12 @@ annotated-types==0.8.0
 anyio==4.15.1
 asgiref==3.12.1
 Django==6.1.2
+cryptography==50.0.2
+cffi==2.1.1
+django-mfa==4.6.0
+fido2==2.2.1
+pycparser==3.11
+qrcode==8.2
 certifi==2026.7.22
 gunicorn==26.2.0
 h11==0.16.0

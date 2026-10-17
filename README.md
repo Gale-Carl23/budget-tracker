@@ -28,6 +28,8 @@ Production configuration is intentionally strict. With `DJANGO_DEBUG=False`, Nib
 
 ## Deploy to Render
 
+Two-factor sign-in is available from **Settings > Manage two-factor authentication**. Users can enroll an authenticator app and generate recovery codes. It is optional per account; after enrollment, the second factor is requested at sign-in. TOTP secrets are encrypted using Django's `DJANGO_SECRET_KEY`, so keep that key stable and backed up.
+
 The repository is prepared for Render's Python web service. Render assigns a free `onrender.com` subdomain and HTTPS certificate; the app reads Render's assigned hostname and URL automatically. You do not need to buy a domain to get started.
 
 1. Push the project to GitHub, then in Render choose **New > PostgreSQL**. Pick a region and a plan that fits your use. For real finance records, use a database plan with ongoing storage and backups; Render's free PostgreSQL databases expire after 30 days.
@@ -66,7 +68,7 @@ Paid Render Postgres plans also include Render-managed point-in-time recovery. I
 
 The application exposes `/healthz/` for Render's service health checks and writes application/runtime errors to standard logs. For searchable exception reports and alerts, create a Sentry Python/Django project and set its DSN as the Render `SENTRY_DSN` secret. The optional integration disables request-body collection, user identifiers, URL/query details, and local-variable capture to avoid sending financial form contents to monitoring. Configure an alert rule in Sentry to email you when a new issue occurs. Without a `SENTRY_DSN`, events stay in Render logs.
 
-Run `python manage.py migrate --noinput` once per deployment in Render's **Pre-Deploy Command** when that setting is available. Render documents pre-deploy commands as the recommended place for migrations; it is available for paid web services. On plans without it, the existing start command still runs migrations before Gunicorn starts. Keep backups available before schema changes and inspect deploy logs after applying migrations.
+Run `python manage.py migrate --noinput` once per deployment in Render's **Pre-Deploy Command** when that setting is available. This applies both Nibi's schema changes and the two-factor authentication tables. Render documents pre-deploy commands as the recommended place for migrations; it is available for paid web services. On plans without it, the existing start command still runs migrations before Gunicorn starts. Keep backups available before schema changes and inspect deploy logs after applying migrations.
 
 Render already provides the public load balancer for web services. To handle more simultaneous traffic, start with the service's **Scale** setting and increase its instance count; each instance runs two Gunicorn workers with two I/O threads by default. Set `WEB_CONCURRENCY` and `GUNICORN_THREADS` only after checking CPU and memory use. Manual multiple-instance scaling and autoscaling plan availability depend on the current Render workspace and service plan; autoscaling requires a Pro workspace. Additional instances and larger plans can incur charges. The app uses persistent PostgreSQL connections (`DB_CONN_MAX_AGE=60` by default); keep total web workers/threads and other app connections below the database's connection limit. Render Postgres connection pooling, when enabled on a supported paid database, requires changing `DATABASE_URL` to its pool URL in the Render dashboard.
 
