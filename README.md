@@ -49,6 +49,17 @@ The free web service sleeps after 15 minutes without requests. Render's free web
 
 For automatic bill emails, create a Render **Cron Job** from the same repository and branch. Use `bash build.sh` as its build command, `python manage.py send_bill_reminders` as its command, and schedule it daily at `0 0 * * *` UTC (08:00 in the app's default Asia/Shanghai timezone). Add the same `DATABASE_URL`, `DJANGO_SECRET_KEY`, and SMTP environment values used by the web service. Run `python manage.py send_bill_reminders --dry-run` as a one-off job first to preview the reminders. The cron job must use the same PostgreSQL database as the website; check current Render plan pricing before creating it.
 
+## Automated backups and restore checks
+
+The `.github/workflows/postgres-backup.yml` workflow runs daily and on demand. It exports PostgreSQL in custom format, uploads it to S3 with server-side AES-256 encryption, restores it into a short-lived PostgreSQL container, and checks that the application tables can be queried. Configure the repository in GitHub before relying on the workflow:
+
+- Add GitHub Actions secrets `RENDER_DATABASE_URL` (Render's external PostgreSQL URL), `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`.
+- Add repository variables `AWS_REGION` and `BACKUP_S3_BUCKET`; optionally set `POSTGRES_MAJOR` to match the Render database version (default `18`).
+- Use a private S3 bucket with Block Public Access enabled. Give the backup identity only the S3 permissions it needs, enable bucket versioning, and add a lifecycle rule for your chosen retention period. The workflow sends a database copy through a temporary GitHub-hosted runner and stores a copy in your AWS account.
+- After adding the settings, run the workflow once from GitHub's **Actions** tab and confirm the backup object exists and the restore-check job succeeds. Scheduled runs use UTC at 00:17.
+
+Paid Render Postgres plans also include Render-managed point-in-time recovery. It restores to a separate database instance so you can inspect it before switching services. The recovery window depends on the Render workspace plan; review Render's current [backup and recovery documentation](https://render.com/docs/postgresql-backups).
+
 Render already provides the public load balancer for web services. To handle more simultaneous traffic, start with the service's **Scale** setting and increase its instance count; each instance runs two Gunicorn workers with two I/O threads by default. Set `WEB_CONCURRENCY` and `GUNICORN_THREADS` only after checking CPU and memory use. Manual multiple-instance scaling and autoscaling plan availability depend on the current Render workspace and service plan; autoscaling requires a Pro workspace. Additional instances and larger plans can incur charges. The app uses persistent PostgreSQL connections (`DB_CONN_MAX_AGE=60` by default); keep total web workers/threads and other app connections below the database's connection limit. Render Postgres connection pooling, when enabled on a supported paid database, requires changing `DATABASE_URL` to its pool URL in the Render dashboard.
 
 Required provider settings:
