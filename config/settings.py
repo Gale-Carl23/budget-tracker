@@ -148,3 +148,27 @@ if not DEBUG:
         if not separator or not header.strip() or not value.strip():
             raise RuntimeError("DJANGO_SECURE_PROXY_SSL_HEADER must be formatted as HEADER,value.")
         SECURE_PROXY_SSL_HEADER = (header.strip(), value.strip())
+
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "").strip()
+if SENTRY_DSN:
+    import sentry_sdk
+
+    def _sanitize_sentry_event(event, hint):
+        request_data = event.get("request")
+        if request_data:
+            request_data["url"] = "[redacted]"
+            for key in ("query_string", "data", "cookies", "headers", "env"):
+                request_data.pop(key, None)
+        event.pop("user", None)
+        return event
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=os.environ.get("SENTRY_ENVIRONMENT", "production" if not DEBUG else "development"),
+        release=os.environ.get("SENTRY_RELEASE") or None,
+        send_default_pii=False,
+        max_request_body_size="never",
+        include_local_variables=False,
+        traces_sample_rate=0.0,
+        before_send=_sanitize_sentry_event,
+    )

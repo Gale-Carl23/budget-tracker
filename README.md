@@ -32,7 +32,7 @@ The repository is prepared for Render's Python web service. Render assigns a fre
 
 1. Push the project to GitHub, then in Render choose **New > PostgreSQL**. Pick a region and a plan that fits your use. For real finance records, use a database plan with ongoing storage and backups; Render's free PostgreSQL databases expire after 30 days.
 2. Create a **Web Service** from `Gale-Carl23/budget-tracker`, branch `main`, runtime **Python 3**. The repository root is the service root.
-3. Set the build command to `bash build.sh` and the start command to `python manage.py migrate --noinput && gunicorn --config gunicorn.conf.py config.wsgi:application`.
+3. Set the build command to `bash build.sh`. On a paid Render web service, set **Pre-Deploy Command** to `python manage.py migrate --noinput` and **Start Command** to `gunicorn --config gunicorn.conf.py config.wsgi:application`. If Pre-Deploy Command is unavailable on your plan, keep the migration in Start Command: `python manage.py migrate --noinput && gunicorn --config gunicorn.conf.py config.wsgi:application`.
 4. In Render's **Health Check Path**, set `/healthz/` so unhealthy app processes are detected and restarted.
 5. Add the following environment values in the Render service. Use the database's **Internal Database URL** for `DATABASE_URL`; use Render's **Generate** option for `DJANGO_SECRET_KEY`.
 
@@ -42,6 +42,8 @@ The repository is prepared for Render's Python web service. Render assigns a fre
    - `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and `DEFAULT_FROM_EMAIL` = credentials from your transactional email provider
    - `EMAIL_USE_TLS` = `True` (for providers using STARTTLS on port 587)
    - `OPENAI_API_KEY` = optional; leave unset until you want to enable the assistant
+   - `SENTRY_DSN` = optional; set this to the DSN for your Sentry Python/Django project to send privacy-filtered error events
+   - `SENTRY_ENVIRONMENT` = `production`
 
 Render supplies the app hostname and HTTPS URL automatically, so Nibi fills `ALLOWED_HOSTS`, CSRF trusted origins, and Render's trusted HTTPS proxy setting for the default `onrender.com` address. If you later add a custom domain, add it to `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS` in the service settings.
 
@@ -59,6 +61,12 @@ The `.github/workflows/postgres-backup.yml` workflow runs daily and on demand. I
 - After adding the settings, run the workflow once from GitHub's **Actions** tab and confirm the backup object exists and the restore-check job succeeds. Scheduled runs use UTC at 00:17.
 
 Paid Render Postgres plans also include Render-managed point-in-time recovery. It restores to a separate database instance so you can inspect it before switching services. The recovery window depends on the Render workspace plan; review Render's current [backup and recovery documentation](https://render.com/docs/postgresql-backups).
+
+## Error monitoring and migrations
+
+The application exposes `/healthz/` for Render's service health checks and writes application/runtime errors to standard logs. For searchable exception reports and alerts, create a Sentry Python/Django project and set its DSN as the Render `SENTRY_DSN` secret. The optional integration disables request-body collection, user identifiers, URL/query details, and local-variable capture to avoid sending financial form contents to monitoring. Configure an alert rule in Sentry to email you when a new issue occurs. Without a `SENTRY_DSN`, events stay in Render logs.
+
+Run `python manage.py migrate --noinput` once per deployment in Render's **Pre-Deploy Command** when that setting is available. Render documents pre-deploy commands as the recommended place for migrations; it is available for paid web services. On plans without it, the existing start command still runs migrations before Gunicorn starts. Keep backups available before schema changes and inspect deploy logs after applying migrations.
 
 Render already provides the public load balancer for web services. To handle more simultaneous traffic, start with the service's **Scale** setting and increase its instance count; each instance runs two Gunicorn workers with two I/O threads by default. Set `WEB_CONCURRENCY` and `GUNICORN_THREADS` only after checking CPU and memory use. Manual multiple-instance scaling and autoscaling plan availability depend on the current Render workspace and service plan; autoscaling requires a Pro workspace. Additional instances and larger plans can incur charges. The app uses persistent PostgreSQL connections (`DB_CONN_MAX_AGE=60` by default); keep total web workers/threads and other app connections below the database's connection limit. Render Postgres connection pooling, when enabled on a supported paid database, requires changing `DATABASE_URL` to its pool URL in the Render dashboard.
 
